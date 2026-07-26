@@ -1,0 +1,15 @@
+{
+    "Food": {
+        "type": 1
+    },
+    "Prey": {
+        "type":2,
+        "health": 100,
+        "energy": 100
+    },
+    "Predator": {
+        "type":3,
+        "health": 100,
+        "energy": 100
+    }
+}
