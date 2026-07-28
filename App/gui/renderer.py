@@ -1,6 +1,6 @@
 import math
 import pygame
-
+from App.vars import *
 from .colors import *
 
 class Renderer:
@@ -12,7 +12,7 @@ class Renderer:
 
     def draw_sensor_rays(self, world, creature):
 
-        sensor = world.sensor_system
+        sensor = world.sensor_system[creature.type]
 
         for relative_angle in sensor.ray_angles:
 
@@ -53,10 +53,12 @@ class Renderer:
                 endx = hit.x
                 endy = hit.y
 
-                if hit.object.type == 1:
+                if hit.object.type == FOOD.type:
                     color = (0,255,0)
+                elif hit.object.type==creature.type:
+                    color = (0,0,255)
                 else:
-                    color = (255,0,0)
+                    color=(255,0,0)
 
             x2, y2 = self.camera.world_to_screen(endx, endy)
 
@@ -87,7 +89,7 @@ class Renderer:
 
             pygame.draw.circle(
                 self.screen,
-                FOOD,
+                PREY_FOOD,
                 (int(x), int(y)),
                 max(2, int(food.radius*self.camera.zoom))
             )
@@ -102,22 +104,32 @@ class Renderer:
                 3,
                 int(c.radius * self.camera.zoom)
             )
-
+            cellcolor=(0,0,0)
+            if (c.type==PREY.type):
+                cellcolor=PREY_COLOR
+            elif (c.type==PREDATOR.type):
+                cellcolor=PREDATOR_COLOR
+            
             pygame.draw.circle(
                 self.screen,
-                CREATURE,
+                cellcolor,
                 (int(x), int(y)),
                 radius
             )
 
             # Halo jaune autour de la créature observée
             if c is spectator:
+                if (spectator.type==PREY.type):
+                    circle_color = (255, 0, 255)
+
+                if (spectator.type==PREDATOR.type):
+                    circle_color = (255, 255, 0)
 
                 pygame.draw.circle(
                     self.screen,
-                    (255, 255, 0),
+                    circle_color,
                     (int(x), int(y)),
-                    radius + 4,
+                    radius,
                     2
                 )
 

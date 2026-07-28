@@ -25,6 +25,7 @@ import numpy as np
 from App.genetics.dna import DNA
 from App.brain.neural_network import NeuralNetwork
 import time
+from App.vars import PREY, PREDATOR
 
 
 class Creature:
@@ -33,15 +34,16 @@ class Creature:
     def __init__(
         self,
         dna,
+        creature_type,
         ray_count,
         world_width,
         world_height
     ):
-
+        self.type=creature_type
         self.last_ray_query=-1
         self.dna = dna
-        self.input_size = ray_count * 2
-
+        self.input_size = ray_count * 3
+        self.ray_count=ray_count
         # ------------------------------------------------
         # Physique
         # ------------------------------------------------
@@ -63,16 +65,21 @@ class Creature:
             math.pi * 2
         )
 
-
-        self.radius = 10
+        if self.type==PREY.type:
+            self.radius =PREY.radius
+        elif self.type==PREDATOR.type:
+            self.radius=PREDATOR.radius
 
 
         self.speed = 0
 
         self.distance_travel=0
-        self.max_speed = 3
+        if PREY.type==self.type:
+            self.max_speed = 3
+        if PREDATOR.type==self.type:
+            self.max_speed=5
 
-        self.type=2
+
 
         # ------------------------------------------------
         # Vie
@@ -82,12 +89,13 @@ class Creature:
 
 
         self.age = 0
-
-
+        self.childs = 0
+        self.isalive=True
         self.score = 0
         self.fitness = (
-            self.score * 100
-            + self.age * 0.1
+            self.childs * 200
+            + self.score * 100
+            - self.age * 0.1
             + self.distance_travel * 0.01
         )
 
@@ -107,7 +115,7 @@ class Creature:
 
     def update_sensor(self, world):
 
-        self.inputs = world.sensor_system.scan(
+        self.inputs = world.sensor_system[self.type].scan(
             self
         )
 
@@ -126,27 +134,32 @@ class Creature:
         )
 
         self.move()
+        if (self.type==PREY.type):
+            self.energy -= (
+                
+                abs(self.speed) * 0.01
+            )
+        elif (self.type==PREDATOR.type):
+            self.energy -= (
+                0.05
+                +
+                abs(self.speed) * 0.02
+            )
 
-        self.energy -= (
-            0.15
-            +
-            abs(self.speed) * 0.02
-        )
 
     # ----------------------------------------------------
     # Boucle de vie
     # ----------------------------------------------------
 
     def update(self, world):
-
         self.age += 1
-
         self.update_sensor(world)
-
         self.update_brain()
-
         self.update_movement()
+        
 
+    def consume(self):
+        self.isalive=False
 
     # ----------------------------------------------------
     # Décisions
@@ -193,7 +206,7 @@ class Creature:
             *
             0.15
         )
-
+        self.energy-=abs(rotation*0.05)
 
 
         self.speed += (
@@ -245,17 +258,16 @@ class Creature:
         food
     ):
 
-        
+        if self.energy > 200:
 
+            self.energy = 200
 
-
-        if self.energy > 100:
-
-            self.energy = 100
         else:
             self.energy += 40
             
             self.score += 1
+
+        
 
 
 
@@ -265,13 +277,13 @@ class Creature:
 
     def alive(self):
         self.fitness = (
-                    self.score * 100
+                    self.childs*200
+                    + self.score * 100
                     - self.age * 0.1
                     + self.distance_travel * 0.01
                 )
-        return (
-            self.energy > 0
-        )
+        self.isalive = (self.energy>0)&self.isalive
+        return self.isalive
 
 
 
@@ -293,3 +305,7 @@ class Creature:
             dx*dx +
             dy*dy
         )
+    def setPos(self, x, y, angle):
+        self.x=x
+        self.y=y
+        self.angle=angle

@@ -17,6 +17,7 @@ Elle est utilisée par :
 
 
 import random
+from App.vars import FOOD
 
 
 
@@ -58,13 +59,13 @@ class Food:
         # Propriétés physiques
         # ------------------------------------------------
 
-        self.radius = 10
+        self.radius = FOOD.radius
 
 
         # Important pour :
         # SpatialGrid / Raycaster / Sensors
 
-        self.type = 1
+        self.type = FOOD.type
 
 
         # ------------------------------------------------
@@ -121,3 +122,7 @@ class Food:
 
 
         self.alive = True
+
+    def setPos(self, x, y):
+        self.x=x
+        self.y=y

@@ -72,6 +72,7 @@ class SimulationLogger:
         event["cause"]=cause
         event["real_date"]=datetime.now().isoformat()
         
+        
 
         self.events.append(
             event
@@ -84,10 +85,6 @@ class SimulationLogger:
     # -------------------------------------------------
 
     def save(self, generation):
-        
-       
-        for file in os.listdir("./logs"):
-            os.remove("./logs/"+file)
         with open(
             "./logs/"+str(generation)+" - "+self.filename,
             "w",

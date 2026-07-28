@@ -3,10 +3,12 @@ from App.simulation import Simulation
 from .camera import Camera
 from .renderer import Renderer
 from .ui import UI
-import time
+import time, os
+
 class SimulationApp:
 
     def __init__(self, 
+            generation_steps=3000,
             population_size=100,
             food_amount=200,
             world_width=1200,
@@ -24,6 +26,7 @@ class SimulationApp:
 
         pygame.init()
         self.sim = Simulation(
+            generation_steps=generation_steps,
             population_size=population_size,
             food_amount=food_amount,
             world_width=world_width,
@@ -46,6 +49,7 @@ class SimulationApp:
         )
         self.dt=0
         self.fps=0
+        self.acceleration=1
        
         pygame.display.set_caption("Evolution Simulation")
         self.spectator_mode = False
@@ -83,6 +87,9 @@ class SimulationApp:
         self.last_time = time.time()
         self.updates_per_second = 0
         self.moy_render_ms=0
+
+        for file in os.listdir("./logs"):
+            os.remove("./logs/"+file)
 
     def run(self):
         
@@ -170,7 +177,7 @@ class SimulationApp:
             # FPS
             # -------------------------
 
-            self.clock.tick(60)
+            self.clock.tick(60*self.acceleration)
 
             self.fps = self.clock.get_fps()
 
@@ -235,7 +242,12 @@ class SimulationApp:
                     if not self.spectator_mode:
                         self.camera.x = 0
                         self.camera.y = 0
-
+                elif event.key == pygame.K_z:
+                    self.acceleration+=1
+                elif event.key == pygame.K_s:
+                    if (self.acceleration-1)>=1:
+                        self.acceleration-=1
+                        
                 elif self.spectator_mode:
 
                     if event.key == pygame.K_RIGHT :

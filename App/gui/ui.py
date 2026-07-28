@@ -34,6 +34,8 @@ class UI:
             f"Generation: {app.sim.generation}",
 
             f"Time: {app.world.time}",
+            
+            f"Time Speed: x{app.acceleration}"
 
         ]
 

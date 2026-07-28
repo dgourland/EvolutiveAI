@@ -21,6 +21,7 @@ Exemple avec 9 rayons :
 
 import math
 import numpy as np
+from App.vars import *
 
 
 
@@ -58,7 +59,7 @@ class SensorSystem:
                 self.ray_count
             )
         self.input_buffer = np.zeros(
-            self.ray_count * 2,
+            self.ray_count * 3,
             dtype=np.float32
         )
 
@@ -78,15 +79,16 @@ class SensorSystem:
                 relative_angle
             )
 
-            strength, obj_type = self.cast_sensor_ray(
+            food, prey, other = self.cast_sensor_ray(
                 creature,
                 angle
             )
 
-            self.input_buffer[index] = strength
-            self.input_buffer[index + 1] = obj_type
+            self.input_buffer[index] = food
+            self.input_buffer[index + 1] = prey
+            self.input_buffer[index + 2] = other
 
-            index += 2
+            index += 3
 
 
         return self.input_buffer.copy()
@@ -101,52 +103,43 @@ class SensorSystem:
         angle
     ):
 
-
         hit = self.raycaster.cast(
-
-            origin=(
-                creature.x,
-                creature.y
-            ),
-
+            origin=(creature.x, creature.y),
             angle=angle,
-
             max_distance=self.max_distance,
-
             ignore=creature
         )
 
-
-
-        # Rien détecté
-
         if hit is None:
-
             return (
+                0.0,
                 0.0,
                 0.0
             )
 
+        strength = 1.0 - hit.distance / self.max_distance
 
+        obj_type = hit.object.type
 
-        strength = (
-            1.0
-            -
-            hit.distance
-            /
-            self.max_distance
-        )
+        food = 0.0
+        selfspecies = 0.0
+        other = 0.0
 
+        if obj_type == FOOD.type:
+            food = strength
 
+        elif obj_type == creature.type:
+            selfspecies = strength
 
-        obj = hit.object
-
+        else:
+            other = strength
 
         return (
-            strength,
-            obj.type/2
+            food,
+            selfspecies,
+            other
         )
 
 
 
-        
+            

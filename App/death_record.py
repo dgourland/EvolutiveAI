@@ -10,7 +10,8 @@ class DeathRecord:
             "time":time,
             "fitness": creature.fitness,
             "dna":creature.dna.dumpDna(),
-            "distance_traveled": creature.distance_travel
+            "distance_traveled": creature.distance_travel,
+            "childs": creature.childs
         }
 
     def getEvent(self):

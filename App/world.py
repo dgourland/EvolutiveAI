@@ -16,8 +16,10 @@ from App.death_record import DeathRecord
 from App.physics.spatial_grid import SpatialGrid
 from App.entities.food import Food
 from App.utils.logger import SimulationLogger
-import time
+import time, random
 from App.sensors.sensors import SensorSystem
+from App.entities.creature import Creature
+from App.vars import *
 
 class World:
 
@@ -35,7 +37,7 @@ class World:
         self.height = height
 
         self.generation=generation
-
+        self.dead_creatures = {1:[],2:[]}
         
         # ------------------------------------------------
         # Entités
@@ -113,6 +115,31 @@ class World:
                 food
             )
 
+    def creature_dies(
+            self,
+            amount,
+            x,
+            y
+        ):
+
+            for _ in range(amount):
+    
+                food = Food(
+                    world_width=self.width,
+                    world_height=self.height
+                )
+                x=random.randint(-5, 5)+x
+                y=random.randint(-5, 5)+y
+                if (x>=self.width):
+                    x=self.width-1
+                if (y>=self.height):
+                    y=self.height-1
+                food.setPos(x, y)
+
+
+                self.foods.append(
+                    food
+                )
 
 
     # ----------------------------------------------------
@@ -176,6 +203,7 @@ class World:
         for creature in self.creatures:
             creature.update_movement()
 
+        self.update_breeding()
 
         creature_time = (
             time.perf_counter() - start
@@ -190,6 +218,7 @@ class World:
         start = time.perf_counter()
 
         self.handle_food()
+        self.handle_predation()
 
         food_time = (
             time.perf_counter() - start
@@ -240,7 +269,26 @@ class World:
     {cleanup_time:.2f} ms
     """
             )
-
+    def update_breeding(self):
+        for creature in self.creatures:
+            if creature.energy>=175:
+               creature.energy=50
+               creature.childs+=1
+               child=Creature(
+                    creature.dna.mutate(
+                        rate=0.02,
+                        strength=0.15
+                    ),
+                    creature.type,
+                    creature.ray_count,
+                    self.width,
+                    self.height
+                )
+               child.setPos(creature.x+random.randint(0, 5)-random.randint(0, 5), creature.y+random.randint(0, 5)-random.randint(0, 5), creature.angle+random.randint(0, 5)-random.randint(0, 5))
+               self.add_creature(
+                    child    
+               )
+        
 
 
     # ----------------------------------------------------
@@ -249,13 +297,11 @@ class World:
 
     def handle_food(self):
 
-
         eaten = []
 
-
-
         for creature in self.creatures:
-
+            if creature.type!=PREY.type:
+                continue
 
             nearby = self.spatial_grid.query_radius(
 
@@ -272,7 +318,80 @@ class World:
             for obj in nearby:
 
 
-                if obj.type != 1:
+                if obj.type != FOOD.type:
+
+                    continue
+
+
+
+                distance = creature.distance_to(
+                    obj
+                )
+
+
+                if (
+                    distance
+                    <
+                    creature.radius
+                    +
+                    obj.radius
+                ):
+
+
+                    creature.eat(
+                        obj
+                    )
+
+
+                    obj.consume()
+
+
+                    eaten.append(
+                        obj
+                    )
+
+
+
+        for food in eaten:
+
+
+            if food in self.foods:
+
+                self.foods.remove(
+                    food
+                )
+
+    # ----------------------------------------------------
+    # Nourriture
+    # ----------------------------------------------------
+
+    def handle_predation(self):
+
+
+        eaten = []
+
+
+
+        for creature in self.creatures:
+            if (creature.type!=PREDATOR.type):
+                continue
+
+            nearby = self.spatial_grid.query_radius(
+
+                creature.x,
+
+                creature.y,
+
+                creature.radius + 10
+
+            )
+
+
+
+            for obj in nearby:
+
+
+                if obj.type != PREY.type:
 
                     continue
 
@@ -338,7 +457,10 @@ class World:
                 )
             else:
                 # self.deads.append(DeathRecord(creature, self.time))
+                if creature.type==PREDATOR.type:
+                    self.creature_dies(4, creature.x, creature.y)
 
+                self.dead_creatures[creature.type].append(creature)
                 self.logger.log_death(
                     DeathRecord(creature, self.time),
                     self.time,
