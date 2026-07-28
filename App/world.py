@@ -308,19 +308,10 @@ class World:
                         +
                         obj.radius
                     ):
-
-
                         creature.eat(
                             obj
                         )
-
-
                         obj.consume()
-
-
-                        eaten.append(
-                            obj
-                        )
 
             elif (creature.type==PREDATOR.type):
                                 
@@ -366,26 +357,6 @@ class World:
     
     
                         obj.consume()
-    
-    
-                        eaten.append(
-                            obj
-                        )
-
-        for food in eaten:
-
-
-            if food in self.foods:
-
-                self.foods.remove(
-                    food
-                )
-
-    
-
-    
-
-
 
     # ----------------------------------------------------
     # Nettoyage
@@ -421,10 +392,8 @@ class World:
 
         self.foods = [
 
-            food
+            f for f in self.foods
 
-            for food in self.foods
-
-            if food.alive
+            if f.alive
 
         ]
