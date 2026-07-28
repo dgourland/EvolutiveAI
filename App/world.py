@@ -269,7 +269,6 @@ class World:
 
     def handle_food(self):
 
-        eaten = []
 
         for creature in self.creatures:
             if creature.type==PREY.type:
