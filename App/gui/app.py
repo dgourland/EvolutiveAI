@@ -1,3 +1,8 @@
+"""
+App/gui/app.py
+
+SimulationApp est la classe principale de l'application
+"""
 import pygame
 from App.simulation import Simulation
 from .camera import Camera
@@ -201,17 +206,9 @@ class SimulationApp:
                 self.update_counter = 0
 
                 self.last_second = now
-            if self.update_counter % 60 == 0:
+           
 
-                print(
-    f"""
-    SIM:
-    {self.simulation_ms:.2f} ms
-
-    RENDER:
-    {self.moy_render_ms:.2f} ms
-    """
-                )
+                
 
             
                 

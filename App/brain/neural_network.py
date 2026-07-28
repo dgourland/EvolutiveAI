@@ -1,5 +1,5 @@
 """
-neural_network.py
+App/brain/neural_network.py
 
 Réseau neuronal utilisé par les créatures.
 

@@ -1,26 +1,18 @@
 """
-sensors.py
+App/sensors/sensors.py
 
-Système de perception des créatures.
+Système de perception optimisé.
 
-Transforme le monde visible en données
-pour le réseau neuronal.
+Le scan écrit directement dans
+le buffer mémoire de la créature.
 
-Chaque rayon retourne 3 valeurs :
-
-    nourriture
-    créature
-    obstacle
-
-
-Exemple avec 9 rayons :
-
-9 rayons x 3 valeurs = 27 entrées neuronales
+Aucune allocation pendant la simulation.
 """
 
 
 import math
 import numpy as np
+
 from App.vars import *
 
 
@@ -46,22 +38,25 @@ class SensorSystem:
 
         self.max_distance = max_distance
 
-        # Cache ray angles
-        if self.ray_count == 1:
+
+        # Angles relatifs des rayons
+
+        if ray_count == 1:
 
             self.ray_angles = [0.0]
 
         else:
 
-            self.ray_angles = np.linspace(
-                -self.fov / 2,
-                self.fov / 2,
-                self.ray_count
-            )
-        self.input_buffer = np.zeros(
-            self.ray_count * 3,
-            dtype=np.float32
-        )
+            step = self.fov / (ray_count - 1)
+
+            start = -self.fov / 2
+
+            self.ray_angles = [
+                start + i * step
+                for i in range(ray_count)
+            ]
+
+
 
     # -----------------------------------------------------
     # Scan complet
@@ -69,77 +64,87 @@ class SensorSystem:
 
     def scan(self, creature):
 
+
+        inputs = creature.inputs
+
+
         index = 0
+
+
+        base_angle = creature.angle
+
+
+        ox = creature.x
+        oy = creature.y
+
+
 
         for relative_angle in self.ray_angles:
 
+
             angle = (
-                creature.angle
+                base_angle
                 +
                 relative_angle
             )
 
-            food, prey, other = self.cast_sensor_ray(
-                creature,
-                angle
+
+            hit = self.raycaster.cast(
+                ox,
+                oy,
+                angle,
+                self.max_distance,
+                creature
             )
 
-            self.input_buffer[index] = food
-            self.input_buffer[index + 1] = prey
-            self.input_buffer[index + 2] = other
+
+            if hit is None:
+
+                inputs[index] = 0.0
+                inputs[index + 1] = 0.0
+                inputs[index + 2] = 0.0
+
+
+            else:
+
+                obj, distance = hit
+
+
+                strength = (
+                    1.0
+                    -
+                    distance / self.max_distance
+                )
+
+
+                obj_type = obj.type
+
+
+
+                if obj_type == FOOD.type:
+
+                    inputs[index] = strength
+                    inputs[index + 1] = 0.0
+                    inputs[index + 2] = 0.0
+
+
+                elif obj_type == creature.type:
+
+                    inputs[index] = 0.0
+                    inputs[index + 1] = strength
+                    inputs[index + 2] = 0.0
+
+
+                else:
+
+                    inputs[index] = 0.0
+                    inputs[index + 1] = 0.0
+                    inputs[index + 2] = strength
+
+
 
             index += 3
 
 
-        return self.input_buffer.copy()
 
-    # -----------------------------------------------------
-    # Rayon individuel
-    # -----------------------------------------------------
-
-    def cast_sensor_ray(
-        self,
-        creature,
-        angle
-    ):
-
-        hit = self.raycaster.cast(
-            origin=(creature.x, creature.y),
-            angle=angle,
-            max_distance=self.max_distance,
-            ignore=creature
-        )
-
-        if hit is None:
-            return (
-                0.0,
-                0.0,
-                0.0
-            )
-
-        strength = 1.0 - hit.distance / self.max_distance
-
-        obj_type = hit.object.type
-
-        food = 0.0
-        selfspecies = 0.0
-        other = 0.0
-
-        if obj_type == FOOD.type:
-            food = strength
-
-        elif obj_type == creature.type:
-            selfspecies = strength
-
-        else:
-            other = strength
-
-        return (
-            food,
-            selfspecies,
-            other
-        )
-
-
-
-            
+        return inputs

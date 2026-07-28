@@ -1,5 +1,5 @@
 """
-spatial_grid.py
+App/physics/spatial_grid.py
 
 Spatial Hash Grid pour simulation d'écosystème.
 

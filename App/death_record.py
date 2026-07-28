@@ -1,3 +1,9 @@
+"""
+App/death_record.py
+
+Objet stockant des métriques sur une créatures morte
+"""
+
 from App.entities.creature import Creature
 
 class DeathRecord:
@@ -11,7 +17,8 @@ class DeathRecord:
             "fitness": creature.fitness,
             "dna":creature.dna.dumpDna(),
             "distance_traveled": creature.distance_travel,
-            "childs": creature.childs
+            "childs": creature.childs,
+            "type": creature.type
         }
 
     def getEvent(self):

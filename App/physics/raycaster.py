@@ -1,46 +1,22 @@
 """
-raycaster.py
+App/physics/raycaster.py
 
-Système de raycasting pour la simulation.
+Système de raycasting optimisé.
 
-Le raycaster utilise une SpatialGrid
-pour trouver rapidement les objets sur le chemin
-d'un rayon.
+Utilise SpatialGrid pour réduire les objets testés.
 
-Un objet détectable doit posséder :
+Retour de cast():
 
-    x
-    y
-    radius
-    type
+    (objet_touché, distance)
+
+ou
+
+    None
 """
 
 
-from dataclasses import dataclass
 import math
 
-
-
-# ---------------------------------------------------------
-# Résultat d'un rayon
-# ---------------------------------------------------------
-
-@dataclass
-class RaycastHit:
-
-    object: object
-
-    distance: float
-
-    x: float
-
-    y: float
-
-
-
-# ---------------------------------------------------------
-# Raycaster
-# ---------------------------------------------------------
 
 class Raycaster:
 
@@ -54,8 +30,8 @@ class Raycaster:
         self.grid = spatial_grid
 
         self.step = step
+
         self.query_id = 0
-        self.checked = {}
 
 
 
@@ -65,13 +41,13 @@ class Raycaster:
 
     def cast(
         self,
-        origin,
+        ox,
+        oy,
         angle,
         max_distance,
         ignore=None
     ):
 
-        ox, oy = origin
 
         dx = math.cos(angle)
         dy = math.sin(angle)
@@ -81,12 +57,12 @@ class Raycaster:
         query_id = self.query_id
 
 
-        closest_hit = None
+        closest_object = None
         closest_distance = max_distance
 
 
 
-        for cell, distance in self.grid.ray_cells(
+        for cell, cell_distance in self.grid.ray_cells(
             ox,
             oy,
             dx,
@@ -94,11 +70,18 @@ class Raycaster:
             max_distance
         ):
 
+            # aucune cellule plus loin ne peut améliorer le résultat
+            if cell_distance > closest_distance:
+                break
+
+
+
             for obj in self.grid.query_cell(*cell):
 
 
                 if obj is ignore:
                     continue
+
 
 
                 if obj.last_ray_query == query_id:
@@ -115,34 +98,34 @@ class Raycaster:
                     dx,
                     dy,
                     obj,
-                    max_distance
+                    closest_distance
                 )
 
 
-                if hit_distance is not None and hit_distance < closest_distance:
+
+                if hit_distance is not None:
 
                     closest_distance = hit_distance
-
-
-                    closest_hit = RaycastHit(
-                        object=obj,
-                        distance=hit_distance,
-                        x=ox + dx * hit_distance,
-                        y=oy + dy * hit_distance
-                    )
+                    closest_object = obj
 
 
 
-        return closest_hit
+        if closest_object is None:
+            return None
+
+
+        return (
+            closest_object,
+            closest_distance
+        )
 
 
 
     # -----------------------------------------------------
-    # Collision point / cercle
+    # Collision rayon / cercle
     # -----------------------------------------------------
 
     def ray_hits_circle(
-        
         self,
         ox,
         oy,
@@ -151,17 +134,11 @@ class Raycaster:
         obj,
         max_distance
     ):
-        """
-        Test précis intersection rayon / cercle.
 
-        Retourne la distance d'impact
-        ou None si aucune collision.
-        """
-
-        # vecteur origine -> centre objet
 
         vx = obj.x - ox
         vy = obj.y - oy
+
 
 
         # projection du centre sur le rayon
@@ -173,51 +150,50 @@ class Raycaster:
         )
 
 
-        # objet derrière le rayon
 
         if t < 0 or t > max_distance:
             return None
 
 
 
-        # point le plus proche sur le rayon
-
         closest_x = ox + dx * t
         closest_y = oy + dy * t
 
 
 
-        # distance entre ce point et le cercle
+        diff_x = obj.x - closest_x
+        diff_y = obj.y - closest_y
 
-        dist_x = obj.x - closest_x
-        dist_y = obj.y - closest_y
 
 
         distance_squared = (
-            dist_x * dist_x
+            diff_x * diff_x
             +
-            dist_y * dist_y
+            diff_y * diff_y
         )
 
 
+        radius = obj.radius
 
-        # pas de collision
 
-        if distance_squared > obj.radius * obj.radius:
+
+        if distance_squared > radius * radius:
             return None
 
 
 
-        # vraie distance du bord du cercle
-
         offset = math.sqrt(
-            obj.radius * obj.radius
+            radius * radius
             -
             distance_squared
         )
 
 
         hit_distance = t - offset
+
+
+        if hit_distance < 0:
+            hit_distance = t
 
 
         return hit_distance

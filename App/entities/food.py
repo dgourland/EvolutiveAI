@@ -1,5 +1,5 @@
 """
-food.py
+App/entities/food.py
 
 Entité nourriture.
 
@@ -37,6 +37,7 @@ class Food:
         # Position
         # ------------------------------------------------
         self.last_ray_query=-1
+        self.energy=40
         if x is not None and y is not None:
 
             self.x = x
@@ -72,7 +73,7 @@ class Food:
         # Valeur nutritive
         # ------------------------------------------------
 
-        self.energy_value = 40
+        
 
 
 

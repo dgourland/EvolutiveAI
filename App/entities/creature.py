@@ -1,5 +1,5 @@
 """
-creature.py
+App/entities/creature.py
 
 Entité vivante de la simulation.
 
@@ -39,10 +39,12 @@ class Creature:
         world_width,
         world_height
     ):
+        
         self.type=creature_type
         self.last_ray_query=-1
         self.dna = dna
         self.input_size = ray_count * 3
+        self.inputs = np.zeros(self.input_size, dtype=np.float32)
         self.ray_count=ray_count
         # ------------------------------------------------
         # Physique
@@ -75,9 +77,9 @@ class Creature:
 
         self.distance_travel=0
         if PREY.type==self.type:
-            self.max_speed = 3
+            self.max_speed = 5
         if PREDATOR.type==self.type:
-            self.max_speed=5
+            self.max_speed=3
 
 
 
@@ -86,7 +88,10 @@ class Creature:
         # ------------------------------------------------
 
         self.energy = 100
-
+        if PREY.type==self.type:
+            self.max_energy=200
+        if PREDATOR.type==self.type:
+            self.max_energy=300
 
         self.age = 0
         self.childs = 0
@@ -115,10 +120,9 @@ class Creature:
 
     def update_sensor(self, world):
 
-        self.inputs = world.sensor_system[self.type].scan(
+        world.sensor_system[self.type].scan(
             self
         )
-
 
     def update_brain(self):
 
@@ -146,6 +150,24 @@ class Creature:
                 abs(self.speed) * 0.02
             )
 
+    def update_breeding(self, world):
+        if self.energy>=175:
+            self.energy=50
+            self.childs+=1
+            child=Creature(
+                self.dna.mutate(
+                    rate=0.02,
+                    strength=0.15
+                ),
+                self.type,
+                self.ray_count,
+                world.width,
+                world.height
+            )
+            child.setPos(self.x+random.randint(0, 5)-random.randint(0, 5), self.y+random.randint(0, 5)-random.randint(0, 5), self.angle+random.randint(0, 5)-random.randint(0, 5))
+            world.add_creature(
+                child    
+            )
 
     # ----------------------------------------------------
     # Boucle de vie
@@ -258,12 +280,12 @@ class Creature:
         food
     ):
 
-        if self.energy > 200:
+        if self.energy > self.max_energy:
 
-            self.energy = 200
+            self.energy = self.max_energy
 
         else:
-            self.energy += 40
+            self.energy += food.energy
             
             self.score += 1
 

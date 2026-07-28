@@ -1,5 +1,5 @@
 """
-dna.py
+App/genetics/dna.py
 
 Gestion de l'ADN des créatures.
 

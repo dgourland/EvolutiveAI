@@ -1,3 +1,9 @@
+"""
+App/gui/renderer.py
+
+Permet la gestion de l'interface grafique de l'application
+"""
+
 import math
 import pygame
 from App.vars import *

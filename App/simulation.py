@@ -1,5 +1,5 @@
 """
-simulation.py
+App/simulation.py
 
 Gestion de l'évolution.
 
@@ -26,6 +26,7 @@ from App.sensors.predator_sensor import PredatorSensorSystem
 from App.sensors.preys_sensor import PreySensorSystem
 from App.vars import * 
 from App.data import DataClass
+from App.death_record import DeathRecord
 import os as OS
 import random
 class Simulation:
@@ -325,6 +326,14 @@ class Simulation:
     # ----------------------------------------------------
 
     def evolve(self):
+        for type in self.world.dead_creatures.keys():
+            for creature in self.world.dead_creatures[type]:
+                self.logger.log_death(
+                                    DeathRecord(creature, self.world.time),
+                                    self.world.time,
+                                    self.generation,
+                                    cause="energy_depleted"
+                                )
 
         population = self.world.creatures
 

@@ -1,3 +1,9 @@
+"""
+App/gui/ui
+
+Permet l'affichage de métriques en temps réel de la simulation.
+"""
+
 import pygame
 
 from .colors import TEXT

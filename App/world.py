@@ -1,5 +1,5 @@
 """
-world.py
+App/world.py
 
 Gestion du monde de simulation.
 
@@ -149,19 +149,15 @@ class World:
     def update_spatial_grid(self):
 
 
-        objects = (
+        self.spatial_grid.clear()
 
-            self.creatures
-            +
-            self.foods
+        for obj in self.creatures:
+            self.spatial_grid.insert(obj)
 
-        )
+        for obj in self.foods:
+            self.spatial_grid.insert(obj)
 
-
-        self.spatial_grid.rebuild(
-            objects
-        )
-
+        
 
 
     def update(self):
@@ -194,16 +190,10 @@ class World:
 
         for creature in self.creatures:
             creature.update_sensor(self)
-
-
-        for creature in self.creatures:
             creature.update_brain()
-
-
-        for creature in self.creatures:
             creature.update_movement()
+            creature.update_breeding(self)
 
-        self.update_breeding()
 
         creature_time = (
             time.perf_counter() - start
@@ -218,7 +208,7 @@ class World:
         start = time.perf_counter()
 
         self.handle_food()
-        self.handle_predation()
+        
 
         food_time = (
             time.perf_counter() - start
@@ -269,25 +259,7 @@ class World:
     {cleanup_time:.2f} ms
     """
             )
-    def update_breeding(self):
-        for creature in self.creatures:
-            if creature.energy>=175:
-               creature.energy=50
-               creature.childs+=1
-               child=Creature(
-                    creature.dna.mutate(
-                        rate=0.02,
-                        strength=0.15
-                    ),
-                    creature.type,
-                    creature.ray_count,
-                    self.width,
-                    self.height
-                )
-               child.setPos(creature.x+random.randint(0, 5)-random.randint(0, 5), creature.y+random.randint(0, 5)-random.randint(0, 5), creature.angle+random.randint(0, 5)-random.randint(0, 5))
-               self.add_creature(
-                    child    
-               )
+
         
 
 
@@ -300,57 +272,105 @@ class World:
         eaten = []
 
         for creature in self.creatures:
-            if creature.type!=PREY.type:
-                continue
+            if creature.type==PREY.type:
+                
 
-            nearby = self.spatial_grid.query_radius(
+                nearby = self.spatial_grid.query_radius(
 
-                creature.x,
+                    creature.x,
 
-                creature.y,
+                    creature.y,
 
-                creature.radius + 10
+                    creature.radius + 10
 
-            )
-
-
-
-            for obj in nearby:
-
-
-                if obj.type != FOOD.type:
-
-                    continue
-
-
-
-                distance = creature.distance_to(
-                    obj
                 )
 
 
-                if (
-                    distance
-                    <
-                    creature.radius
-                    +
-                    obj.radius
-                ):
+
+                for obj in nearby:
 
 
-                    creature.eat(
+                    if obj.type != FOOD.type:
+
+                        continue
+
+
+
+                    distance = creature.distance_to(
                         obj
                     )
 
 
-                    obj.consume()
+                    if (
+                        distance
+                        <
+                        creature.radius
+                        +
+                        obj.radius
+                    ):
 
 
-                    eaten.append(
+                        creature.eat(
+                            obj
+                        )
+
+
+                        obj.consume()
+
+
+                        eaten.append(
+                            obj
+                        )
+
+            elif (creature.type==PREDATOR.type):
+                                
+                
+                nearby = self.spatial_grid.query_radius(
+    
+                    creature.x,
+    
+                    creature.y,
+    
+                    creature.radius + 10
+    
+                )
+    
+    
+    
+                for obj in nearby:
+    
+    
+                    if obj.type != PREY.type:
+    
+                        continue
+    
+    
+    
+                    distance = creature.distance_to(
                         obj
                     )
-
-
+    
+    
+                    if (
+                        distance
+                        <
+                        creature.radius
+                        +
+                        obj.radius
+                    ):
+    
+    
+                        creature.eat(
+                            obj
+                        )
+    
+    
+                        obj.consume()
+    
+    
+                        eaten.append(
+                            obj
+                        )
 
         for food in eaten:
 
@@ -361,78 +381,9 @@ class World:
                     food
                 )
 
-    # ----------------------------------------------------
-    # Nourriture
-    # ----------------------------------------------------
+    
 
-    def handle_predation(self):
-
-
-        eaten = []
-
-
-
-        for creature in self.creatures:
-            if (creature.type!=PREDATOR.type):
-                continue
-
-            nearby = self.spatial_grid.query_radius(
-
-                creature.x,
-
-                creature.y,
-
-                creature.radius + 10
-
-            )
-
-
-
-            for obj in nearby:
-
-
-                if obj.type != PREY.type:
-
-                    continue
-
-
-
-                distance = creature.distance_to(
-                    obj
-                )
-
-
-                if (
-                    distance
-                    <
-                    creature.radius
-                    +
-                    obj.radius
-                ):
-
-
-                    creature.eat(
-                        obj
-                    )
-
-
-                    obj.consume()
-
-
-                    eaten.append(
-                        obj
-                    )
-
-
-
-        for food in eaten:
-
-
-            if food in self.foods:
-
-                self.foods.remove(
-                    food
-                )
+    
 
 
 
@@ -461,12 +412,7 @@ class World:
                     self.creature_dies(4, creature.x, creature.y)
 
                 self.dead_creatures[creature.type].append(creature)
-                self.logger.log_death(
-                    DeathRecord(creature, self.time),
-                    self.time,
-                    self.generation,
-                    cause="energy_depleted"
-                )
+                
 
 
         self.creatures = alive
