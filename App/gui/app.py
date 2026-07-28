@@ -154,6 +154,9 @@ class SimulationApp:
                     self.world.width,
                     self.world.height
                 )
+                self.camera.zoom=3
+            else:
+                self.camera.zoom=1
 
             self.renderer.draw(
                 self.world,

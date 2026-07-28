@@ -26,7 +26,8 @@ class Renderer:
 
             hit = sensor.raycaster.cast(
 
-                origin=(creature.x, creature.y),
+                creature.x, 
+                creature.y,
 
                 angle=angle,
 
@@ -56,15 +57,27 @@ class Renderer:
 
             else:
 
-                endx = hit.x
-                endy = hit.y
+                obj, distance = hit
 
-                if hit.object.type == FOOD.type:
+                endx = (
+                    creature.x
+                    + math.cos(angle) * distance
+                )
+
+                endy = (
+                    creature.y
+                    + math.sin(angle) * distance
+                )
+
+
+                if obj.type == FOOD.type:
                     color = (0,255,0)
-                elif hit.object.type==creature.type:
+
+                elif obj.type == creature.type:
                     color = (0,0,255)
+
                 else:
-                    color=(255,0,0)
+                    color = (255,0,0)
 
             x2, y2 = self.camera.world_to_screen(endx, endy)
 

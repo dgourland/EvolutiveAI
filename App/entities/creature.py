@@ -151,8 +151,8 @@ class Creature:
             )
 
     def update_breeding(self, world):
-        if self.energy>=175:
-            self.energy=50
+        if self.energy>=self.max_energy*0.85:
+            self.energy=self.energy-100
             self.childs+=1
             child=Creature(
                 self.dna.mutate(
