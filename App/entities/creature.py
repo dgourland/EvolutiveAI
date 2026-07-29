@@ -140,12 +140,11 @@ class Creature:
         self.move()
         if (self.type==PREY.type):
             self.energy -= (
-                
                 abs(self.speed) * 0.01
             )
         elif (self.type==PREDATOR.type):
             self.energy -= (
-                0.05
+                0.02
                 +
                 abs(self.speed) * 0.02
             )
@@ -228,7 +227,7 @@ class Creature:
             *
             0.15
         )
-        self.energy-=abs(rotation*0.05)
+        self.energy-=abs(rotation*0.01)
 
 
         self.speed += (
@@ -299,9 +298,9 @@ class Creature:
 
     def alive(self):
         self.fitness = (
-                    self.childs*200
-                    + self.score * 100
-                    - self.age * 0.1
+                    self.childs*100
+                    + self.score * 50
+                    - self.age * 0.02
                     + self.distance_travel * 0.01
                 )
         self.isalive = (self.energy>0)&self.isalive

@@ -8,7 +8,7 @@ def main():
         world_height=1080,
         world_width=1920,
         respawn_food_size=30,
-        respawn_food_rate=5,
+        respawn_food_rate=2,
         fov=90,
         max_distance=200,
         rays=10,
