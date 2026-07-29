@@ -91,14 +91,12 @@ class Simulation:
         dna_predators=[]
         for files in OS.listdir("./saves/preys/"):
             with open("./saves/preys/"+files) as f:
-                new_dna = DNA.random(NeuralNetwork.dna_size(PREY.ray_count*3))
-                new_dna.loadDna(f.read())
+                new_dna = DNA.load(f.read())
                 dna_preys.append(new_dna)
 
         for files in OS.listdir("./saves/predator/"):
             with open("./saves/predator/"+files) as f:
-                new_dna = DNA.random(NeuralNetwork.dna_size(PREDATOR.ray_count*3))
-                new_dna.loadDna(f.read())
+                new_dna = DNA.load(f.read())
                 dna_predators.append(new_dna)
 
         self.create_initial_prey_population(dna_preys)
@@ -145,7 +143,7 @@ class Simulation:
 
         else:
             input_size = (
-                PREDATOR.ray_count * 3
+                PREDATOR.ray_count * 3+PREDATOR.memory_size+PREDATOR.metrics_size
             )
 
             dna_size = NeuralNetwork.dna_size(
@@ -156,8 +154,7 @@ class Simulation:
 
             for _ in range(self.population_size//2):
                 if self.starting_dna is not None:
-                    dna = DNA(DNA.random(dna_size))
-                    dna.loadDna(self.starting_dna)
+                    dna = DNA.load(self.starting_dna)
                     dna = dna.mutate(
                         rate=self.starting_mutation_rate,
                         strength=self.starting_mutation_strength
@@ -228,7 +225,7 @@ class Simulation:
         else:
         
             input_size = (
-                PREY.ray_count * 3
+                PREY.ray_count * 3+PREY.memory_size+PREY.metrics_size
             )
 
             dna_size = NeuralNetwork.dna_size(
@@ -240,8 +237,7 @@ class Simulation:
             for _ in range(self.population_size//2):
 
                 if self.starting_dna is not None:
-                    dna = DNA(DNA.random(dna_size))
-                    dna.loadDna(self.starting_dna)
+                    dna = DNA.load(self.starting_dna)
                     dna = dna.mutate(
                         rate=self.starting_mutation_rate,
                         strength=self.starting_mutation_strength
@@ -347,7 +343,7 @@ class Simulation:
 
             preys=self.world.dead_creatures[PREY.type].copy()
             predators=self.world.dead_creatures[PREDATOR.type].copy()
-            self.world.dead_creatures={1:[],2:[]}
+            
             self.current_step = 0
 
             self.world.time = 0
@@ -365,7 +361,7 @@ class Simulation:
             if len(predators)==0:
                 predators=self.world.dead_creatures[PREDATOR.type].copy()
 
-            self.world.dead_creatures={1:[],2:[]}
+        self.world.dead_creatures={1:[],2:[]}
         
 
         preys.sort(
@@ -402,11 +398,11 @@ class Simulation:
 
         for lives in survivors_preys:
             with open(f"saves/preys/{DataClass.NAMELIST[random.randint(0, DataClass.NAMELIST.__len__()-1)]}.dna", "w") as f:
-                f.write(lives.dna.dumpDna())
+                f.write(lives.dna.dump())
 
         for lives in survivors_predator:
             with open(f"saves/predator/{DataClass.NAMELIST[random.randint(0, DataClass.NAMELIST.__len__()-1)]}.dna", "w") as f:
-                f.write(lives.dna.dumpDna())
+                f.write(lives.dna.dump())
 
 
 

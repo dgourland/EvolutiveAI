@@ -3,9 +3,19 @@ App/physics/raycaster.py
 
 Système de raycasting optimisé.
 
-Utilise SpatialGrid pour réduire les objets testés.
+Utilise SpatialGrid pour limiter
+le nombre d'objets testés.
 
-Retour de cast():
+Deux modes :
+
+cast()
+    reçoit un angle (compatibilité)
+
+cast_vector()
+    reçoit directement un vecteur directionnel
+    (utilisé par les capteurs optimisés)
+
+Retour :
 
     (objet_touché, distance)
 
@@ -29,14 +39,12 @@ class Raycaster:
 
         self.grid = spatial_grid
 
-        self.step = step
-
         self.query_id = 0
 
 
 
     # -----------------------------------------------------
-    # Raycast principal
+    # Version classique avec angle
     # -----------------------------------------------------
 
     def cast(
@@ -48,16 +56,42 @@ class Raycaster:
         ignore=None
     ):
 
-
         dx = math.cos(angle)
         dy = math.sin(angle)
 
+        return self.cast_vector(
+            ox,
+            oy,
+            dx,
+            dy,
+            max_distance,
+            ignore
+        )
+
+
+
+    # -----------------------------------------------------
+    # Version optimisée avec vecteur
+    # -----------------------------------------------------
+
+    def cast_vector(
+        self,
+        ox,
+        oy,
+        dx,
+        dy,
+        max_distance,
+        ignore=None
+    ):
+
 
         self.query_id += 1
+
         query_id = self.query_id
 
 
         closest_object = None
+
         closest_distance = max_distance
 
 
@@ -70,21 +104,32 @@ class Raycaster:
             max_distance
         ):
 
-            # aucune cellule plus loin ne peut améliorer le résultat
+
+            # Les cellules suivantes sont forcément
+            # plus éloignées
+
             if cell_distance > closest_distance:
+
                 break
 
 
 
-            for obj in self.grid.query_cell(*cell):
+            for obj in self.grid.query_cell(
+                *cell
+            ):
 
 
                 if obj is ignore:
+
                     continue
 
 
 
+                # Un objet peut être présent
+                # dans plusieurs cellules
+
                 if obj.last_ray_query == query_id:
+
                     continue
 
 
@@ -105,13 +150,17 @@ class Raycaster:
 
                 if hit_distance is not None:
 
+
                     closest_distance = hit_distance
+
                     closest_object = obj
 
 
 
         if closest_object is None:
+
             return None
+
 
 
         return (
@@ -141,9 +190,10 @@ class Raycaster:
 
 
 
-        # projection du centre sur le rayon
+        # Projection du centre
+        # sur le rayon
 
-        t = (
+        projection = (
             vx * dx
             +
             vy * dy
@@ -151,13 +201,23 @@ class Raycaster:
 
 
 
-        if t < 0 or t > max_distance:
+        if projection < 0 or projection > max_distance:
+
             return None
 
 
 
-        closest_x = ox + dx * t
-        closest_y = oy + dy * t
+        closest_x = (
+            ox
+            +
+            dx * projection
+        )
+
+        closest_y = (
+            oy
+            +
+            dy * projection
+        )
 
 
 
@@ -173,11 +233,13 @@ class Raycaster:
         )
 
 
+
         radius = obj.radius
 
 
 
         if distance_squared > radius * radius:
+
             return None
 
 
@@ -189,11 +251,15 @@ class Raycaster:
         )
 
 
-        hit_distance = t - offset
+
+        hit_distance = projection - offset
+
 
 
         if hit_distance < 0:
-            hit_distance = t
+
+            hit_distance = projection
+
 
 
         return hit_distance

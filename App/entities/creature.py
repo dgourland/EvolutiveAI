@@ -33,24 +33,73 @@ class Creature:
 
     def __init__(
         self,
-        dna,
+        dna: DNA,
         creature_type,
-        ray_count,
-        world_width,
-        world_height
+        ray_count: int,
+        world_width: int,
+        world_height: int,
     ):
-        
-        self.type=creature_type
-        self.last_ray_query=-1
+        # ==========================================================
+        # Identité
+        # ==========================================================
+
+        self.type = creature_type
         self.dna = dna
-        self.input_size = ray_count * 3
-        self.inputs = np.zeros(self.input_size, dtype=np.float32)
-        self.ray_count=ray_count
-        # ------------------------------------------------
-        # Physique
-        # ------------------------------------------------
-        self.world_height=world_height
-        self.world_width=world_width
+
+        self.world_width = world_width
+        self.world_height = world_height
+
+        self.last_ray_query = -1
+
+        # ==========================================================
+        # Capteurs
+        # ==========================================================
+
+        self.ray_count = ray_count
+        self.vision_size = ray_count * 3
+
+        # ==========================================================
+        # Métriques internes
+        #
+        # energy
+        # speed
+        # age
+        # sin(angle)
+        # cos(angle)
+        # ==========================================================
+
+        self.metrics_size = 5
+
+        # ==========================================================
+        # Mémoire interne
+        # ==========================================================
+
+        self.memory_size = 16
+
+        self.memory = np.zeros(
+            self.memory_size,
+            dtype=np.float32
+        )
+
+        # ==========================================================
+        # Entrées du réseau
+        # ==========================================================
+
+        self.input_size = (
+            self.vision_size
+            + self.metrics_size
+            + self.memory_size
+        )
+
+        self.inputs = np.zeros(
+            self.input_size,
+            dtype=np.float32
+        )
+
+        # ==========================================================
+        # Position
+        # ==========================================================
+
         self.x = random.uniform(
             0,
             world_width
@@ -61,75 +110,109 @@ class Creature:
             world_height
         )
 
-
         self.angle = random.uniform(
             0,
-            math.pi * 2
+            math.tau
         )
 
-        if self.type==PREY.type:
-            self.radius =PREY.radius
-        elif self.type==PREDATOR.type:
-            self.radius=PREDATOR.radius
+        # ==========================================================
+        # Caractéristiques physiques
+        # ==========================================================
 
+        if self.type == PREY.type:
 
-        self.speed = 0
-
-        self.distance_travel=0
-        if PREY.type==self.type:
+            self.radius = PREY.radius
             self.max_speed = 5
-        if PREDATOR.type==self.type:
-            self.max_speed=3
+            self.max_energy = 150
 
+        else:
 
+            self.radius = PREDATOR.radius
+            self.max_speed = 3
+            self.max_energy = 200
 
-        # ------------------------------------------------
-        # Vie
-        # ------------------------------------------------
+        self.speed = 0.0
+        self.distance_travel = 0.0
 
-        self.energy = 100
-        if PREY.type==self.type:
-            self.max_energy=200
-        if PREDATOR.type==self.type:
-            self.max_energy=300
+        # ==========================================================
+        # Etat biologique
+        # ==========================================================
+
+        self.energy = self.max_energy * 0.5
 
         self.age = 0
-        self.childs = 0
-        self.isalive=True
+
         self.score = 0
-        self.fitness = (
-            self.childs * 200
-            + self.score * 100
-            - self.age * 0.1
-            + self.distance_travel * 0.01
-        )
 
+        self.childs = 0
 
-        # ------------------------------------------------
+        self.wantbreed = False
+
+        self.isalive = True
+
+        self.fitness = 0.0
+
+        # ==========================================================
         # Cerveau
-        # ------------------------------------------------
-
+        # ==========================================================
 
         self.brain = NeuralNetwork(
-
-            dna.genes,
-
-            self.input_size
-
+            dna=dna.genes,
+            input_size=self.input_size,
+            memory_size=self.memory_size
         )
 
+        self.outputs = np.zeros(
+            5,
+            dtype=np.float32
+        )
     def update_sensor(self, world):
 
         world.sensor_system[self.type].scan(
-            self
-        )
+                self
+            )
 
     def update_brain(self):
+        """
+        Construit les entrées du réseau neuronal puis
+        calcule les actions et le nouvel état mémoire.
+        """
 
-        self.outputs = self.brain.forward(
-            self.inputs
+        offset = self.vision_size
+
+        # -------------------------------------------------
+        # Etat interne
+        # -------------------------------------------------
+
+        self.inputs[offset] = self.energy / self.max_energy
+        self.inputs[offset + 1] = self.speed / self.max_speed
+
+        # âge normalisé
+        self.inputs[offset + 2] = min(
+            self.age / 5000,
+            1.0
         )
 
+        # orientation
+        self.inputs[offset + 3] = math.sin(self.angle)
+        self.inputs[offset + 4] = math.cos(self.angle)
+
+        # -------------------------------------------------
+        # Mémoire
+        # -------------------------------------------------
+
+        self.inputs[
+            offset + self.metrics_size:
+        ] = self.memory
+
+        # -------------------------------------------------
+        # Calcul neuronal
+        # -------------------------------------------------
+
+        self.outputs, self.memory = self.brain.forward(
+            inputs=self.inputs,
+            memory=self.memory
+        )
 
     def update_movement(self):
 
@@ -150,7 +233,7 @@ class Creature:
             )
 
     def update_breeding(self, world):
-        if self.energy>=self.max_energy*0.85:
+        if self.energy>100 and self.wantbreed:
             self.energy=self.energy-100
             self.childs+=1
             child=Creature(
@@ -186,72 +269,59 @@ class Creature:
     # Décisions
     # ----------------------------------------------------
 
-    def act(
-        self,
-        outputs
-    ):
-
-
+    def act(self, outputs):
         """
-        outputs :
+        Interprète les sorties du réseau neuronal.
 
-        0 : tourner gauche
-        1 : tourner droite
-        2 : accélérer
-        3 : freiner
-        4 : manger
+        Sorties :
+            0 : tourner à gauche
+            1 : tourner à droite
+            2 : accélérer
+            3 : freiner
+            4 : reproduction
         """
 
+        # -------------------------------------------------
+        # Rotation
+        # -------------------------------------------------
 
-        turn_left = outputs[0]
+        turn = outputs[1] - outputs[0]
 
-        turn_right = outputs[1]
+        self.angle += turn * 0.15
 
+        # Normalise l'angle entre 0 et 2π
+        self.angle %= math.tau
 
-        acceleration = outputs[2]
+        # Le fait de tourner consomme un peu d'énergie
+        self.energy -= abs(turn) * 0.01
 
+        # -------------------------------------------------
+        # Accélération
+        # -------------------------------------------------
 
-        brake = outputs[3]
+        self.speed += outputs[2] * 0.2
 
+        # -------------------------------------------------
+        # Freinage
+        # -------------------------------------------------
 
+        self.speed -= outputs[3] * 0.1
 
-        rotation = (
-            turn_right
-            -
-            turn_left
-        )
+        # -------------------------------------------------
+        # Limitation de la vitesse
+        # -------------------------------------------------
 
-
-        self.angle += (
-            rotation
-            *
-            0.15
-        )
-        self.energy-=abs(rotation*0.01)
-
-
-        self.speed += (
-            acceleration
-            *
-            0.2
-        )
-
-
-        self.speed -= (
-            brake
-            *
-            0.1
-        )
-
-
-
-        self.speed = max(
+        self.speed = np.clip(
+            self.speed,
             -self.max_speed,
-            min(
-                self.speed,
-                self.max_speed
-            )
+            self.max_speed
         )
+
+        # -------------------------------------------------
+        # Reproduction
+        # -------------------------------------------------
+
+        self.wantbreed = outputs[4] > 0
 
 
 

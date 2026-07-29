@@ -26,10 +26,11 @@ class SimulationApp:
             fov=90,
             max_distance=200,
             rays=10,
-            rays_points=5
+            rays_points=5,
+            GUI=True
             ):
 
-        pygame.init()
+        self.GUI=GUI
         self.sim = Simulation(
             generation_steps=generation_steps,
             population_size=population_size,
@@ -48,25 +49,17 @@ class SimulationApp:
         self.respawn_food_size=respawn_food_size
         self.respawn_food_rate=respawn_food_rate
         self.world = self.sim.world
-
-        self.screen = pygame.display.set_mode(
-            (self.world.width, self.world.height)
-        )
+        
         self.dt=0
         self.fps=0
         self.acceleration=1
        
-        pygame.display.set_caption("Evolution Simulation")
+        
         self.spectator_mode = False
         self.spectator_index = 0
         self.clock = pygame.time.Clock()
 
-        self.camera = Camera()
-
-        self.renderer = Renderer(
-            self.screen,
-            self.camera
-        )
+        
 
         self.running = True
 
@@ -87,7 +80,7 @@ class SimulationApp:
             "food": 0,
             "render_ms": 0
         }
-        self.ui = UI()
+        
         self.sim_updates = 0
         self.last_time = time.time()
         self.updates_per_second = 0
@@ -97,8 +90,21 @@ class SimulationApp:
             os.remove("./logs/"+file)
 
     def run(self):
-        
+        if self.GUI:
+            pygame.init()
+            self.screen = pygame.display.set_mode(
+                (self.world.width, self.world.height)
+            )
+            pygame.display.set_caption("Evolution Simulation")
+            self.camera = Camera()
+            
+            self.renderer = Renderer(
+                self.screen,
+                self.camera
+            )
+            self.ui = UI()
         while self.running:
+            single_app_iteration=time.perf_counter()
 
 
             self.handle_events()
@@ -110,10 +116,12 @@ class SimulationApp:
             # -------------------------
 
             start = time.perf_counter()
-
+            used_time_start = time.perf_counter()
 
             if not self.paused:
-
+                if self.world.time%(self.respawn_food_rate*60)==0:
+                    self.world.spawn_food(self.respawn_food_size)
+                    
                 self.sim.update()
 
                 self.update_counter += 1
@@ -123,15 +131,15 @@ class SimulationApp:
 
                     self.sim.evolve()
                     self.sim.generation+=1
-                if self.update_counter%(self.respawn_food_rate*60)==0:
-                    self.world.spawn_food(self.respawn_food_size)
+
+                
 
             end = time.perf_counter()
 
-
-            self.simulation_ms = (
-                end - start
-            ) * 1000
+            if self.world.time%60==0:
+                self.simulation_ms = (
+                    end - start
+                ) * 1000
 
 
 
@@ -142,50 +150,51 @@ class SimulationApp:
             start = time.perf_counter()
 
             spectator = None
+            if self.GUI:
+                if self.spectator_mode and self.world.creatures:
 
-            if self.spectator_mode and self.world.creatures:
+                    self.spectator_index %= len(self.world.creatures)
 
-                self.spectator_index %= len(self.world.creatures)
+                    spectator = self.world.creatures[self.spectator_index]
 
-                spectator = self.world.creatures[self.spectator_index]
+                    self.camera.follow(
+                        spectator,
+                        self.world.width,
+                        self.world.height
+                    )
+                    self.camera.zoom=2
+                else:
+                    self.camera.zoom=1
 
-                self.camera.follow(
-                    spectator,
-                    self.world.width,
-                    self.world.height
+                self.renderer.draw(
+                    self.world,
+                    spectator
                 )
-                self.camera.zoom=3
-            else:
-                self.camera.zoom=1
-
-            self.renderer.draw(
-                self.world,
-                spectator
-            )
-            self.ui.draw(self.screen,self)
+                self.ui.draw(self.screen,self)
 
 
-            end = time.perf_counter()
+                end = time.perf_counter()
 
 
-            self.render_ms = (
-                end - start
-            ) * 1000
+                self.render_ms = (
+                    end - start
+                ) * 1000
 
-            if self.moy_render_ms == 0:
-                self.moy_render_ms=self.render_ms
-            else:
-                self.moy_render_ms = (self.moy_render_ms+self.render_ms)/2
+                if self.moy_render_ms == 0:
+                    self.moy_render_ms=self.render_ms
+                else:
+                    self.moy_render_ms = (self.moy_render_ms+self.render_ms)/2
 
-            pygame.display.flip()
+                pygame.display.flip()
 
 
 
             # -------------------------
             # FPS
             # -------------------------
-
-            self.clock.tick(60*self.acceleration)
+            used_time = time.perf_counter()-used_time_start
+            if self.GUI:
+                self.clock.tick(60*self.acceleration)
 
             self.fps = self.clock.get_fps()
 
@@ -209,17 +218,22 @@ class SimulationApp:
                 self.update_counter = 0
 
                 self.last_second = now
+            if self.world.time%60==0:
+                app_iteration = time.perf_counter()-single_app_iteration
+                print("Free time remaining: ", (app_iteration-used_time)*1000, "ms")
+                print("Total app time per ticks: ", (app_iteration)*1000, "ms")
            
 
                 
 
             
                 
-
-        pygame.quit()
+        if self.GUI:
+            pygame.quit()
 
     def handle_events(self):
-
+        if not self.GUI:
+            return
         for event in pygame.event.get():
 
             if event.type == pygame.QUIT:

@@ -15,7 +15,7 @@ class DeathRecord:
             "food_eaten":creature.score,
             "time":time,
             "fitness": creature.fitness,
-            "dna":creature.dna.dumpDna(),
+            "dna":creature.dna.dump(),
             "distance_traveled": creature.distance_travel,
             "childs": creature.childs,
             "type": creature.type

@@ -3,70 +3,56 @@ App/genetics/dna.py
 
 Gestion de l'ADN des créatures.
 
-L'ADN est une liste de nombres flottants.
+L'ADN est un simple vecteur de nombres flottants.
 
-Chaque valeur représente un gène.
-Dans notre simulation, les gènes correspondent
-principalement aux poids du réseau neuronal.
+Il peut être :
+
+- généré aléatoirement
+- copié
+- muté
+- croisé
+- exporté/importé
+
+Le contenu des gènes est interprété
+par les différents systèmes (cerveau,
+corps, capteurs, etc.).
 """
-import base64
 
-import numpy as np
+import base64
 import random
 
+import numpy as np
 
 
 class DNA:
 
+    def __init__(self, genes):
 
-    def __init__(
-        self,
-        genes
-    ):
-
-        self.genes = np.array(
+        self.genes = np.asarray(
             genes,
             dtype=np.float32
         )
 
-
-
-    # -----------------------------------------------------
-    # Création aléatoire
-    # -----------------------------------------------------
+    # =====================================================
+    # Création
+    # =====================================================
 
     @classmethod
-    def random(
-        cls,
-        size
-    ):
-
-        """
-
-        Crée un ADN aléatoire.
-
-        Exemple :
-
-        DNA.random(1456)
-
-        """
-
-        genes = np.random.uniform(
-            -1,
-            1,
-            size
-        )
-
+    def random(cls, size):
 
         return cls(
-            genes
+
+            np.random.uniform(
+                -1.0,
+                1.0,
+                size
+            )
+
         )
 
-
-
-    # -----------------------------------------------------
+    # =====================================================
     # Copie
-    # -----------------------------------------------------
+    # =====================================================
 
     def copy(self):
 
@@ -74,147 +60,110 @@ class DNA:
             self.genes.copy()
         )
 
-
-
-    # -----------------------------------------------------
+    # =====================================================
     # Mutation
-    # -----------------------------------------------------
+    # =====================================================
 
     def mutate(
         self,
         rate=0.02,
-        strength=0.2
+        strength=0.20
     ):
-
         """
-        Mutation aléatoire.
+        Mutation gaussienne.
 
-        rate :
-            probabilité qu'un gène mute.
+        Chaque gène possède une probabilité
+        'rate' d'être modifié.
 
-        strength :
-            intensité de la mutation.
+        La variation suit une loi normale.
         """
-
 
         child = self.genes.copy()
 
-
-
-        for i in range(
+        mask = np.random.random(
             len(child)
-        ):
+        ) < rate
 
-
-            if random.random() < rate:
-
-
-                child[i] += np.random.normal(
-                    0,
-                    strength
-                )
-
-
-
-        return DNA(
-            child
-        )
-    
-    def dumpDna(self):
-        return base64.b64encode(self.genes.tobytes()).decode("utf-8")
-
-    def loadDna(self, dna_dump:str):
-        self.genes = np.frombuffer(
-            base64.b64decode(dna_dump.encode("utf-8"))
-            , dtype=np.float32
+        child[mask] += np.random.normal(
+            0,
+            strength,
+            np.count_nonzero(mask)
         )
 
+        return DNA(child)
 
-
-    # -----------------------------------------------------
+    # =====================================================
     # Croisement
-    # -----------------------------------------------------
+    # =====================================================
 
-    def crossover(
-        self,
-        other
-    ):
+    def crossover(self, other):
 
-        """
-        Mélange deux ADN.
-
-        Exemple :
-
-        Parent A
-        111111
-
-        Parent B
-        000000
-
-
-        Enfant :
-
-        110010
-        """
-
-
-
-        if len(self.genes) != len(other.genes):
+        if len(self) != len(other):
 
             raise ValueError(
-                "ADN incompatibles"
+                "Les ADN n'ont pas la même taille."
             )
 
+        mask = np.random.random(
+            len(self)
+        ) < 0.5
 
-        child = np.empty_like(
-            self.genes
+        child = np.where(
+            mask,
+            self.genes,
+            other.genes
         )
 
+        return DNA(child)
 
-        for i in range(
-            len(child)
-        ):
+    # =====================================================
+    # Encodage
+    # =====================================================
 
+    def dump(self):
 
-            if random.random() < 0.5:
+        return base64.b64encode(
+            self.genes.tobytes()
+        ).decode("utf-8")
 
-                child[i] = self.genes[i]
+    @classmethod
+    def load(cls, dump):
 
-            else:
-
-                child[i] = other.genes[i]
-
-
-
-        return DNA(
-            child
+        genes = np.frombuffer(
+            base64.b64decode(
+                dump.encode("utf-8")
+            ),
+            dtype=np.float32
         )
 
+        return cls(genes)
 
-
-    # -----------------------------------------------------
+    # =====================================================
     # Accès
-    # -----------------------------------------------------
+    # =====================================================
 
     def __len__(self):
 
-        return len(
-            self.genes
-        )
+        return len(self.genes)
 
-
-
-    def __getitem__(
-        self,
-        index
-    ):
+    def __getitem__(self, index):
 
         return self.genes[index]
 
+    def __setitem__(self, index, value):
 
+        self.genes[index] = value
+
+    def __iter__(self):
+
+        return iter(self.genes)
+
+    # =====================================================
+    # Affichage
+    # =====================================================
 
     def __repr__(self):
 
         return (
-            f"DNA(size={len(self.genes)})"
+            f"DNA(size={len(self)})"
         )

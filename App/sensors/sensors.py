@@ -6,19 +6,19 @@ Système de perception optimisé.
 Le scan écrit directement dans
 le buffer mémoire de la créature.
 
-Aucune allocation pendant la simulation.
+Optimisations :
+
+- aucun calcul trigonométrique par rayon
+- aucun tableau temporaire
+- vecteurs des rayons pré-calculés
 """
 
-
 import math
-import numpy as np
 
-from App.vars import *
-
+from App.vars import FOOD
 
 
 class SensorSystem:
-
 
     def __init__(
         self,
@@ -32,31 +32,42 @@ class SensorSystem:
 
         self.ray_count = ray_count
 
-        self.fov = math.radians(
-            field_of_view
-        )
-
         self.max_distance = max_distance
 
+        self.fov = math.radians(field_of_view)
 
-        # Angles relatifs des rayons
+        # -------------------------------------------------
+        # Pré-calcul des angles
+        # -------------------------------------------------
 
-        if ray_count == 1:
+        if ray_count <= 1:
 
             self.ray_angles = [0.0]
 
         else:
 
             step = self.fov / (ray_count - 1)
-
-            start = -self.fov / 2
+            start = -self.fov * 0.5
 
             self.ray_angles = [
                 start + i * step
                 for i in range(ray_count)
             ]
 
+        # -------------------------------------------------
+        # Pré-calcul des vecteurs unitaires
+        # -------------------------------------------------
 
+        self.relative_vectors = [
+
+            (
+                math.cos(angle),
+                math.sin(angle)
+            )
+
+            for angle in self.ray_angles
+
+        ]
 
     # -----------------------------------------------------
     # Scan complet
@@ -64,87 +75,55 @@ class SensorSystem:
 
     def scan(self, creature):
 
-
         inputs = creature.inputs
-
-
-        index = 0
-
-
-        base_angle = creature.angle
-
 
         ox = creature.x
         oy = creature.y
 
+        # Rotation de la créature
+        cos_angle = math.cos(creature.angle)
+        sin_angle = math.sin(creature.angle)
 
+        index = 0
 
-        for relative_angle in self.ray_angles:
+        for rel_dx, rel_dy in self.relative_vectors:
 
+            # Rotation du vecteur du rayon
+            dx = rel_dx * cos_angle - rel_dy * sin_angle
+            dy = rel_dx * sin_angle + rel_dy * cos_angle
 
-            angle = (
-                base_angle
-                +
-                relative_angle
+            hit = self.raycaster.cast_vector(
+                ox=ox,
+                oy=oy,
+                dx=dx,
+                dy=dy,
+                max_distance=self.max_distance,
+                ignore=creature
             )
 
+            # Réinitialisation des 3 entrées du rayon
+            inputs[index] = 0.0
+            inputs[index + 1] = 0.0
+            inputs[index + 2] = 0.0
 
-            hit = self.raycaster.cast(
-                ox,
-                oy,
-                angle,
-                self.max_distance,
-                creature
-            )
-
-
-            if hit is None:
-
-                inputs[index] = 0.0
-                inputs[index + 1] = 0.0
-                inputs[index + 2] = 0.0
-
-
-            else:
+            if hit is not None:
 
                 obj, distance = hit
 
+                strength = 1.0 - distance / self.max_distance
 
-                strength = (
-                    1.0
-                    -
-                    distance / self.max_distance
-                )
-
-
-                obj_type = obj.type
-
-
-
-                if obj_type == FOOD.type:
+                if obj.type == FOOD.type:
 
                     inputs[index] = strength
-                    inputs[index + 1] = 0.0
-                    inputs[index + 2] = 0.0
 
+                elif obj.type == creature.type:
 
-                elif obj_type == creature.type:
-
-                    inputs[index] = 0.0
                     inputs[index + 1] = strength
-                    inputs[index + 2] = 0.0
-
 
                 else:
 
-                    inputs[index] = 0.0
-                    inputs[index + 1] = 0.0
                     inputs[index + 2] = strength
 
-
-
             index += 3
-
-
 
         return inputs

@@ -12,14 +12,19 @@ class FOOD:
 
 class PREY:
     type=1
-    ray_count=20
-    field_of_view=300
+    ray_count=32
+    field_of_view=240
     max_distance=150
     radius=8
+    memory_size=16
+    metrics_size=5
 
 class PREDATOR:
     type=2
-    ray_count=20
-    field_of_view=90
+    ray_count=32
+    field_of_view=120
     max_distance=250
     radius=8
+    memory_size=16
+    metrics_size=5
+    

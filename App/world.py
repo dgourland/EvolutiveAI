@@ -49,7 +49,7 @@ class World:
 
         self.foods = []
 
-
+        
         # ------------------------------------------------
         # Spatial hash grid
         # ------------------------------------------------
@@ -161,7 +161,7 @@ class World:
 
 
     def update(self):
-
+        
         total_start = time.perf_counter()
 
 
@@ -185,6 +185,7 @@ class World:
         # -----------------------------
         # Creatures
         # -----------------------------
+        
 
         start = time.perf_counter()
 
@@ -194,7 +195,7 @@ class World:
             creature.update_movement()
             creature.update_breeding(self)
 
-
+                
         creature_time = (
             time.perf_counter() - start
         ) * 1000
