@@ -74,11 +74,6 @@ class Simulation:
             self.generation
         )
 
-        self.raycaster = Raycaster(
-            self.world.spatial_grid,
-            self.world
-        )
-
         self.world.sensor_system = {
             PREY.type:PreySensorSystem(),
             PREDATOR.type:PredatorSensorSystem()
