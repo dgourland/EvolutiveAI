@@ -10,7 +10,7 @@ from App.sensors.sensors import SensorSystem
 from App.vars import *
 class PredatorSensorSystem(SensorSystem):
     def __init__(
-            self, raycaster, 
+            self, 
 
             ):
-        super().__init__(raycaster, PREDATOR.ray_count, PREDATOR.field_of_view, PREDATOR.max_distance)
+        super().__init__(PREDATOR.ray_count, PREDATOR.field_of_view, PREDATOR.max_distance)

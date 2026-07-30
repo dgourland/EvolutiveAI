@@ -15,117 +15,159 @@ Optimisations :
 
 import math, time
 
-from App.vars import FOOD
-
+from App.vars import FOOD, PREY, PREDATOR
+from App.physics.jit_math import njit_scan
+import numpy as np
 
 
 class SensorSystem:
 
     def __init__(
         self,
-        raycaster,
-        ray_count=12,
-        field_of_view=90,
-        max_distance=200
+        ray_count=9,
+        fov=math.pi * 0.8,
+        max_distance=200,
+        
     ):
 
-        self.raycaster = raycaster
-
         self.ray_count = ray_count
-
         self.max_distance = max_distance
+        self.fov = fov
 
-        self.fov = math.radians(field_of_view)
+        self.query_id = 0
 
-        # -------------------------------------------------
-        # Pré-calcul des angles
-        # -------------------------------------------------
 
-        if ray_count <= 1:
+        self.relative_vectors = np.zeros(
+            (ray_count, 2),
+            dtype=np.float32
+        )
 
-            self.ray_angles = [0.0]
 
-        else:
+        half_fov = fov * 0.5
 
-            step = self.fov / (ray_count - 1)
-            start = -self.fov * 0.5
 
-            self.ray_angles = [
-                start + i * step
-                for i in range(ray_count)
-            ]
+        for i in range(ray_count):
 
-        # -------------------------------------------------
-        # Pré-calcul des vecteurs unitaires
-        # -------------------------------------------------
+            if ray_count == 1:
+                angle = 0.0
 
-        self.relative_vectors = [
+            else:
+                angle = (
+                    -half_fov
+                    +
+                    i * fov / (ray_count - 1)
+                )
 
-            (
-                math.cos(angle),
-                math.sin(angle)
-            )
 
-            for angle in self.ray_angles
-
-        ]
-
+            self.relative_vectors[i,0] = math.cos(angle)
+            self.relative_vectors[i,1] = math.sin(angle)
     # -----------------------------------------------------
     # Scan complet
     # -----------------------------------------------------
 
-    def scan(self, creature):
+    def scan(self, creature, world):
 
-        inputs = creature.inputs
+        # ---------------------------------
+        # Creature state
+        # ---------------------------------
 
         ox = creature.x
         oy = creature.y
 
-        # Rotation de la créature
         cos_angle = math.cos(creature.angle)
         sin_angle = math.sin(creature.angle)
 
-        index = 0
 
-        for rel_dx, rel_dy in self.relative_vectors:
+        # ---------------------------------
+        # Sensor input buffer
+        # ---------------------------------
 
-            # Rotation du vecteur du rayon
-            dx = rel_dx * cos_angle - rel_dy * sin_angle
-            dy = rel_dx * sin_angle + rel_dy * cos_angle
-            
-            hit = self.raycaster.cast_vector(
-                ox=ox,
-                oy=oy,
-                dx=dx,
-                dy=dy,
-                max_distance=self.max_distance,
-                ignore=creature
-            )
-            
-            
+        inputs = creature.inputs
 
-            # Réinitialisation des 3 entrées du rayon
-            inputs[index] = 0.0
-            inputs[index + 1] = 0.0
-            inputs[index + 2] = 0.0
 
-            if hit is not None:
+        # ---------------------------------
+        # World buffers
+        # ---------------------------------
 
-                object_id, distance = hit
+        object_x = world.object_x
+        object_y = world.object_y
+        object_radius = world.object_radius
+        object_type = world.object_type
 
-                strength = 1.0 - distance / self.max_distance
+        object_ids = world.spatial_grid.object_ids
 
-                object_type = self.raycaster.world.object_type[object_id]
+        cell_start = world.spatial_grid.cell_start
+        cell_end = world.spatial_grid.cell_end
 
-                if object_type == FOOD.type:
-                    inputs[index] = strength
 
-                elif object_type == creature.type:
-                    inputs[index + 1] = strength
+        # ---------------------------------
+        # Unique object id to ignore
+        # ---------------------------------
 
-                else:
-                    inputs[index + 2] = strength
+        ignore_id = creature.object_id
 
-            index += 3
+
+        # ---------------------------------
+        # Query cache
+        # ---------------------------------
+
+        query_id = self.query_id
+
+
+        # ---------------------------------
+        # Run JIT scanner
+        # ---------------------------------
+
+        njit_scan(
+            ox,
+            oy,
+
+            cos_angle,
+            sin_angle,
+
+            self.relative_vectors,
+
+            self.max_distance,
+
+
+            object_ids,
+            cell_start,
+            cell_end,
+
+
+            object_x,
+            object_y,
+            object_radius,
+            object_type,
+
+
+            world.object_last_query,
+            query_id,
+
+
+            ignore_id,
+
+
+            world.spatial_grid.ray_stamp,
+            world.spatial_grid.current_ray,
+
+            world.spatial_grid.grid_width,
+            world.spatial_grid.grid_height,
+            world.spatial_grid.cell_size,
+
+
+            inputs,
+
+            creature.type,
+            FOOD.type
+        )
+
+
+        # ---------------------------------
+        # Increment query counter
+        # ---------------------------------
+
+        self.query_id += self.ray_count
+
 
         return inputs

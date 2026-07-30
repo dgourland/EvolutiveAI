@@ -138,6 +138,8 @@ class Creature:
         # Etat biologique
         # ==========================================================
 
+        self.object_id = 0 
+        
         self.energy = self.max_energy * 0.5
 
         self.age = 0
@@ -176,7 +178,9 @@ class Creature:
     def update_sensor(self, world):
 
         world.sensor_system[self.type].scan(
-                self
+            
+                self,
+                world
             )
 
     def update_brain(self):

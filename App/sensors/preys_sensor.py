@@ -9,6 +9,6 @@ from App.sensors.sensors import SensorSystem
 from App.vars import *
 class PreySensorSystem(SensorSystem):
     def __init__(
-            self, raycaster, 
+            self 
             ):
-        super().__init__(raycaster, PREY.ray_count, PREY.field_of_view, PREY.max_distance)
+        super().__init__(PREY.ray_count, PREY.field_of_view, PREY.max_distance)

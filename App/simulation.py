@@ -81,8 +81,8 @@ class Simulation:
         )
 
         self.world.sensor_system = {
-            PREY.type:PreySensorSystem(self.raycaster),
-            PREDATOR.type:PredatorSensorSystem(self.raycaster)
+            PREY.type:PreySensorSystem(),
+            PREDATOR.type:PredatorSensorSystem()
         }
 
     
