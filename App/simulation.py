@@ -20,7 +20,6 @@ from App.world import World
 from App.genetics.dna import DNA
 from App.brain.neural_network import NeuralNetwork
 from App.entities.creature import Creature
-from App.physics.raycaster import Raycaster
 from App.utils.logger import SimulationLogger
 from App.sensors.predator_sensor import PredatorSensorSystem
 from App.sensors.preys_sensor import PreySensorSystem
