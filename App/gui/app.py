@@ -218,7 +218,7 @@ class SimulationApp:
                 self.update_counter = 0
 
                 self.last_second = now
-            if self.world.time%60==0:
+            if self.world.time%60*2==0:
                 app_iteration = time.perf_counter()-single_app_iteration
                 print("Free time remaining: ", (app_iteration-used_time)*1000, "ms")
                 print("Total app time per ticks: ", (app_iteration)*1000, "ms")

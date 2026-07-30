@@ -1,120 +1,227 @@
 """
-App/physics/spatial_grid.py
+Spatial hash grid.
 
-Spatial Hash Grid pour simulation d'écosystème.
+Stores object IDs only.
 
-Permet de retrouver rapidement les objets proches
-sans parcourir toutes les entités du monde.
+Workflow:
 
-Chaque objet doit posséder :
+1. clear()
+2. insert(object_id, x, y, radius)
+3. finalize()
 
-    obj.x
-    obj.y
-    obj.radius
+After finalize:
+cell_start[cell] : beginning index
+cell_end[cell]   : ending index
 
-Optionnel :
-
-    obj.type
-
-Exemple :
-    "creature"
-    "food"
-    "obstacle"
+Objects are stored in object_ids[start:end]
 """
 
-
-from collections import defaultdict
+import numpy as np
 
 
 class SpatialGrid:
 
-    def __init__(self, cell_size=64):
 
-        """
-        cell_size :
-            taille d'une cellule en pixels.
-
-        Une valeur entre 32 et 128 fonctionne
-        généralement bien.
-        """
+    def __init__(
+        self,
+        width,
+        height,
+        cell_size=64,
+        max_objects=20000
+    ):
 
         self.cell_size = cell_size
 
-        # {(cell_x, cell_y): [objets]}
-        self.cells = defaultdict(list)
+        self.grid_width = (
+            width // cell_size
+        ) + 1
+
+        self.grid_height = (
+            height // cell_size
+        ) + 1
 
 
-    # --------------------------------------------------
-    # Conversion coordonnées -> cellule
-    # --------------------------------------------------
-
-    def get_cell(self, x, y):
-
-        return (
-            int(x // self.cell_size),
-            int(y // self.cell_size)
+        self.cell_count = (
+            self.grid_width *
+            self.grid_height
         )
 
 
-    # --------------------------------------------------
-    # Reset complet
-    # --------------------------------------------------
+        self.max_objects = max_objects
+
+
+        # ------------------------------------
+        # Temporary build storage
+        # ------------------------------------
+
+        self.build_lists = [
+            []
+            for _ in range(self.cell_count)
+        ]
+
+
+        # ------------------------------------
+        # Final compressed storage
+        # ------------------------------------
+
+        self.cell_start = np.zeros(
+            self.cell_count,
+            dtype=np.int32
+        )
+
+        self.cell_end = np.zeros(
+            self.cell_count,
+            dtype=np.int32
+        )
+
+        self.object_ids = np.zeros(
+            self.max_objects,
+            dtype=np.int32
+        )
+
+        self.object_count = 0
+
+
+        # ------------------------------------
+        # Ray traversal cache
+        # ------------------------------------
+
+        self.ray_stamp = np.zeros(
+            self.cell_count,
+            dtype=np.int32
+        )
+
+        self.current_ray = 0
+
+
+
+    # ------------------------------------
+    # Reset
+    # ------------------------------------
 
     def clear(self):
 
-        self.cells.clear()
+        self.object_count = 0
+
+        self.cell_start.fill(0)
+        self.cell_end.fill(0)
+
+        for cell in self.build_lists:
+            cell.clear()
 
 
-    # --------------------------------------------------
-    # Ajout d'un objet
-    # --------------------------------------------------
 
-    def insert(self, obj):
+    # ------------------------------------
+    # Insert object
+    # ------------------------------------
 
-        """
-        Ajoute un objet dans toutes les cellules
-        qu'il occupe.
-        """
+    def insert(
+        self,
+        object_id,
+        x,
+        y,
+        radius
+    ):
 
-        radius = obj.radius
-
-
-        min_x = int(
-            (obj.x - radius)
-            // self.cell_size
+        min_x = max(
+            0,
+            int((x-radius)//self.cell_size)
         )
 
-        max_x = int(
-            (obj.x + radius)
-            // self.cell_size
-        )
-
-
-        min_y = int(
-            (obj.y - radius)
-            // self.cell_size
-        )
-
-        max_y = int(
-            (obj.y + radius)
-            // self.cell_size
+        max_x = min(
+            self.grid_width-1,
+            int((x+radius)//self.cell_size)
         )
 
 
-        for cell_x in range(min_x, max_x + 1):
-
-            for cell_y in range(min_y, max_y + 1):
-
-                self.cells[
-                    (cell_x, cell_y)
-                ].append(obj)
-
-    def query_cell(self, cell_x, cell_y):
-
-        return self.cells.get(
-            (cell_x, cell_y),
-            ()
+        min_y = max(
+            0,
+            int((y-radius)//self.cell_size)
         )
+
+        max_y = min(
+            self.grid_height-1,
+            int((y+radius)//self.cell_size)
+        )
+
+
+        for cy in range(
+            min_y,
+            max_y+1
+        ):
+
+            row = cy * self.grid_width
+
+            for cx in range(
+                min_x,
+                max_x+1
+            ):
+
+                self.build_lists[
+                    row + cx
+                ].append(
+                    object_id
+                )
+
+
+
+    # ------------------------------------
+    # Compress grid
+    # ------------------------------------
+
+    def finalize(self):
+
+        index = 0
+
+
+        for cell_id in range(
+            self.cell_count
+        ):
+
+            self.cell_start[cell_id] = index
+
+
+            for obj_id in self.build_lists[cell_id]:
+
+                if index >= self.max_objects:
+                    raise RuntimeError(
+                        "SpatialGrid max_objects exceeded"
+                    )
+
+                self.object_ids[index] = obj_id
+                index += 1
+
+
+            self.cell_end[cell_id] = index
+
+
+            self.build_lists[cell_id].clear()
+
+
+        self.object_count = index
+
+
+
+    # ------------------------------------
+    # Query cell
+    # ------------------------------------
+
+    def query_cell(
+        self,
+        cell_id
+    ):
+
+        return (
+            self.object_ids,
+            self.cell_start[cell_id],
+            self.cell_end[cell_id]
+        )
+
+
+
+    # ------------------------------------
+    # Cells crossed by a ray
+    # ------------------------------------
 
     def ray_cells(
         self,
@@ -125,176 +232,140 @@ class SpatialGrid:
         max_distance
     ):
 
-        step = self.cell_size * 0.32
+        self.current_ray += 1
 
-        distance = 0
+        ray_id = self.current_ray
 
-        visited = set()
+
+        cx = int(x // self.cell_size)
+        cy = int(y // self.cell_size)
+
+
+        if (
+            cx < 0 or
+            cy < 0 or
+            cx >= self.grid_width or
+            cy >= self.grid_height
+        ):
+            return
+
+
+        if dx > 0:
+            step_x = 1
+            next_x = (
+                (cx + 1) *
+                self.cell_size
+            )
+
+            t_max_x = (
+                next_x - x
+            ) / dx
+
+            t_delta_x = (
+                self.cell_size / dx
+            )
+
+        elif dx < 0:
+            step_x = -1
+            next_x = (
+                cx *
+                self.cell_size
+            )
+
+            t_max_x = (
+                next_x - x
+            ) / dx
+
+            t_delta_x = (
+                -self.cell_size / dx
+            )
+
+        else:
+            step_x = 0
+            t_max_x = float("inf")
+            t_delta_x = float("inf")
+
+
+
+        if dy > 0:
+            step_y = 1
+            next_y = (
+                (cy + 1) *
+                self.cell_size
+            )
+
+            t_max_y = (
+                next_y - y
+            ) / dy
+
+            t_delta_y = (
+                self.cell_size / dy
+            )
+
+        elif dy < 0:
+            step_y = -1
+            next_y = (
+                cy *
+                self.cell_size
+            )
+
+            t_max_y = (
+                next_y - y
+            ) / dy
+
+            t_delta_y = (
+                -self.cell_size / dy
+            )
+
+        else:
+            step_y = 0
+            t_max_y = float("inf")
+            t_delta_y = float("inf")
+
+
+
+        distance = 0.0
 
 
         while distance <= max_distance:
 
-            px = x + dx * distance
-            py = y + dy * distance
 
-
-            cell = self.get_cell(
-                px,
-                py
+            cell_id = (
+                cy *
+                self.grid_width
+                +
+                cx
             )
 
 
-            if cell not in visited:
+            if self.ray_stamp[cell_id] != ray_id:
 
-                visited.add(cell)
+                self.ray_stamp[cell_id] = ray_id
 
-                yield cell, distance
-
-
-            distance += step
-    # --------------------------------------------------
-    # Reconstruction complète
-    # --------------------------------------------------
-
-    def rebuild(self, objects):
-
-        """
-        A appeler une fois par frame.
-
-        Exemple :
-
-            grid.rebuild(
-                creatures + foods
-            )
-        """
-
-        self.clear()
-
-
-        for obj in objects:
-
-            self.insert(obj)
-
-
-
-    # --------------------------------------------------
-    # Recherche locale
-    # --------------------------------------------------
-
-    def query(self, x, y):
-
-        """
-        Retourne les objets dans la cellule
-        et les 8 cellules voisines.
-
-        Utilisé par :
-            - raycaster
-            - collisions
-            - IA
-        """
-
-        cell_x, cell_y = self.get_cell(x, y)
-
-
-        results = []
-
-
-        for x_offset in (-1, 0, 1):
-
-            for y_offset in (-1, 0, 1):
-
-                cell = (
-                    cell_x + x_offset,
-                    cell_y + y_offset
+                yield (
+                    cell_id,
+                    distance
                 )
 
 
-                results.extend(
-                    self.cells.get(
-                        cell,
-                        []
-                    )
-                )
+            if t_max_x < t_max_y:
+
+                cx += step_x
+                distance = t_max_x
+                t_max_x += t_delta_x
+
+            else:
+
+                cy += step_y
+                distance = t_max_y
+                t_max_y += t_delta_y
 
 
-        return results
 
-
-
-    # --------------------------------------------------
-    # Recherche dans un rayon
-    # --------------------------------------------------
-
-    def query_radius(
-        self,
-        x,
-        y,
-        radius
-    ):
-
-        """
-        Retourne les objets réellement
-        présents dans le cercle demandé.
-        """
-
-        results = []
-
-        checked = set()
-
-
-        min_x = int(
-            (x-radius)
-            // self.cell_size
-        )
-
-        max_x = int(
-            (x+radius)
-            // self.cell_size
-        )
-
-
-        min_y = int(
-            (y-radius)
-            // self.cell_size
-        )
-
-        max_y = int(
-            (y+radius)
-            // self.cell_size
-        )
-
-
-        radius_squared = radius * radius
-
-
-        for cx in range(min_x, max_x+1):
-
-            for cy in range(min_y, max_y+1):
-
-
-                for obj in self.cells.get(
-                    (cx, cy),
-                    []
-                ):
-
-                    # éviter doublons
-                    if id(obj) in checked:
-                        continue
-
-
-                    checked.add(id(obj))
-
-
-                    dx = obj.x - x
-                    dy = obj.y - y
-
-
-                    if (
-                        dx*dx + dy*dy
-                        <= radius_squared
-                    ):
-
-                        results.append(obj)
-
-
-        return results
+            if (
+                cx < 0 or
+                cy < 0 or
+                cx >= self.grid_width or
+                cy >= self.grid_height
+            ):
+                break

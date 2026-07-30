@@ -3,7 +3,7 @@ def main():
     print("[+] Starting Program")
     app = SimulationApp(
         generation_steps=6000,
-        population_size=10,
+        population_size=50,
         food_amount=50,
         world_height=1080,
         world_width=1920,

@@ -13,9 +13,10 @@ Optimisations :
 - vecteurs des rayons pré-calculés
 """
 
-import math
+import math, time
 
 from App.vars import FOOD
+
 
 
 class SensorSystem:
@@ -91,7 +92,7 @@ class SensorSystem:
             # Rotation du vecteur du rayon
             dx = rel_dx * cos_angle - rel_dy * sin_angle
             dy = rel_dx * sin_angle + rel_dy * cos_angle
-
+            
             hit = self.raycaster.cast_vector(
                 ox=ox,
                 oy=oy,
@@ -100,6 +101,8 @@ class SensorSystem:
                 max_distance=self.max_distance,
                 ignore=creature
             )
+            
+            
 
             # Réinitialisation des 3 entrées du rayon
             inputs[index] = 0.0
@@ -108,20 +111,19 @@ class SensorSystem:
 
             if hit is not None:
 
-                obj, distance = hit
+                object_id, distance = hit
 
                 strength = 1.0 - distance / self.max_distance
 
-                if obj.type == FOOD.type:
+                object_type = self.raycaster.world.object_type[object_id]
 
+                if object_type == FOOD.type:
                     inputs[index] = strength
 
-                elif obj.type == creature.type:
-
+                elif object_type == creature.type:
                     inputs[index + 1] = strength
 
                 else:
-
                     inputs[index + 2] = strength
 
             index += 3

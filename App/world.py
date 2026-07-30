@@ -20,6 +20,7 @@ import time, random
 from App.sensors.sensors import SensorSystem
 from App.entities.creature import Creature
 from App.vars import *
+import numpy as np
 
 class World:
 
@@ -30,41 +31,97 @@ class World:
         height=800,
         generation=0
     ):
+
         self.logger = SimulationLogger()
 
         self.width = width
-
         self.height = height
 
-        self.generation=generation
-        self.dead_creatures = {1:[],2:[]}
+        self.generation = generation
         
+        self.dead_creatures = {
+            1: [],
+            2: []
+        }
+
+
         # ------------------------------------------------
         # Entités
         # ------------------------------------------------
 
         self.creatures = []
 
-        self.deads= []
+        self.deads = []
 
         self.foods = []
 
-        
+
+        # ------------------------------------------------
+        # Object buffers for spatial/raycast system
+        # ------------------------------------------------
+        #
+        # Index = object id used by SpatialGrid
+        #
+        # creatures:
+        #   0 -> len(creatures)-1
+        #
+        # foods:
+        #   len(creatures) -> end
+        #
+
+        MAX_OBJECTS = 10000
+
+        self.object_x = np.zeros(
+            MAX_OBJECTS,
+            dtype=np.float32
+        )
+
+        self.object_y = np.zeros(
+            MAX_OBJECTS,
+            dtype=np.float32
+        )
+
+        self.object_radius = np.zeros(
+            MAX_OBJECTS,
+            dtype=np.float32
+        )
+
+        self.object_type = np.zeros(
+            MAX_OBJECTS,
+            dtype=np.int32
+        )
+
+        self.object_last_query = np.zeros(
+            MAX_OBJECTS,
+            dtype=np.int32
+        )
+
+
+        self.object_count = 0
+
+
         # ------------------------------------------------
         # Spatial hash grid
         # ------------------------------------------------
 
         self.spatial_grid = SpatialGrid(
+            width,
+            height,
             cell_size=64
         )
+
+
         self.sensor_system = None
 
+        # object_id -> python object
+        self.object_ref = []
 
 
-        # compteur temps
+        # ------------------------------------------------
+        # Temps simulation
+        # ------------------------------------------------
 
         self.time = 0
-
 
 
     # ----------------------------------------------------
@@ -148,17 +205,73 @@ class World:
 
     def update_spatial_grid(self):
 
+        self.object_ref.clear()
 
-        self.spatial_grid.clear()
+        self.object_count = 0
 
-        for obj in self.creatures:
-            self.spatial_grid.insert(obj)
+        grid = self.spatial_grid
 
-        for obj in self.foods:
-            self.spatial_grid.insert(obj)
+        grid.clear()
 
-        
+        self.object_count = 0
 
+        # -----------------------------
+        # Creatures
+        # -----------------------------
+
+        for creature in self.creatures:
+
+            object_id = self.object_count
+
+            # Store the spatial id inside the creature
+            creature.object_id = object_id
+            self.object_ref.append(creature)
+
+            self.object_x[object_id] = creature.x
+            self.object_y[object_id] = creature.y
+            self.object_radius[object_id] = creature.radius
+            self.object_type[object_id] = creature.type
+
+
+            self.object_last_query[object_id] = -1
+
+
+            self.spatial_grid.insert(
+                object_id,
+                creature.x,
+                creature.y,
+                creature.radius
+            )
+
+
+            self.object_count += 1
+
+        # -----------------------------
+        # Food
+        # -----------------------------
+
+        for food in self.foods:
+
+            obj = self.object_count
+            self.object_ref.append(food)
+            self.object_ref[obj] = food
+
+            self.object_x[obj] = food.x
+            self.object_y[obj] = food.y
+            self.object_radius[obj] = food.radius
+            self.object_type[obj] = food.type
+            self.object_last_query[obj] = -1
+
+            grid.insert(
+                obj,
+                food.x,
+                food.y,
+                food.radius
+            )
+
+            self.object_count += 1
+
+        grid.finalize()
 
     def update(self):
         
@@ -188,14 +301,29 @@ class World:
         
 
         start = time.perf_counter()
+        sensor_time=0
+        brain_time=0
+        movement_time=0
+        breeding_time=0
 
         for creature in self.creatures:
+            sensor = time.perf_counter()
             creature.update_sensor(self)
-            creature.update_brain()
-            creature.update_movement()
-            creature.update_breeding(self)
+            sensor_time+=(time.perf_counter() - sensor)*1000
 
-                
+            brain = time.perf_counter()
+            creature.update_brain()
+            brain_time+= (time.perf_counter() - brain)*1000
+
+            moves = time.perf_counter()
+            creature.update_movement()
+            movement_time+= (time.perf_counter() - moves)*1000
+
+            breeding = time.perf_counter()
+            creature.update_breeding(self)
+            breeding_time += (time.perf_counter() - breeding)*1000
+
+        
         creature_time = (
             time.perf_counter() - start
         ) * 1000
@@ -239,7 +367,7 @@ class World:
 
 
 
-        if self.time % 60 == 0:
+        if self.time % 60*2 == 0:
 
             print(
                 f"""
@@ -258,6 +386,18 @@ class World:
 
     Cleanup:
     {cleanup_time:.2f} ms
+
+    Creatures::brain:
+    {brain_time:.2f} ms
+
+    Creature::breeding:
+    {breeding_time:.2f} ms
+
+    Creature::moves:
+    {movement_time:.2f} ms
+
+    Creature::sensor:
+    {sensor_time:.2f} ms
     """
             )
 
@@ -270,92 +410,81 @@ class World:
 
     def handle_food(self):
 
+        grid = self.spatial_grid
+
+        cell_size = grid.cell_size
+        grid_width = grid.grid_width
+        grid_height = grid.grid_height
+
+        object_ref = self.object_ref
 
         for creature in self.creatures:
-            if creature.type==PREY.type:
-                
 
-                nearby = self.spatial_grid.query_radius(
+            search_radius = creature.radius + 10
 
-                    creature.x,
+            min_x = max(
+                0,
+                int((creature.x - search_radius) // cell_size)
+            )
 
-                    creature.y,
+            max_x = min(
+                grid_width - 1,
+                int((creature.x + search_radius) // cell_size)
+            )
 
-                    creature.radius + 10
+            min_y = max(
+                0,
+                int((creature.y - search_radius) // cell_size)
+            )
 
-                )
+            max_y = min(
+                grid_height - 1,
+                int((creature.y + search_radius) // cell_size)
+            )
 
+            # ------------------------------------------
+            # Scan neighbouring cells
+            # ------------------------------------------
 
+            for cy in range(min_y, max_y + 1):
 
-                for obj in nearby:
+                row = cy * grid_width
 
+                for cx in range(min_x, max_x + 1):
 
-                    if obj.type != FOOD.type:
+                    cell_id = row + cx
 
-                        continue
+                    start = grid.cell_start[cell_id]
+                    end = grid.cell_end[cell_id]
 
+                    for index in range(start, end):
 
+                        obj = object_ref[
+                            grid.object_ids[index]
+                        ]
 
-                    distance = creature.distance_to(
-                        obj
-                    )
+                        if obj is creature:
+                            continue
 
+                        if creature.type == PREY.type:
 
-                    if (
-                        distance
-                        <
-                        creature.radius
-                        +
-                        obj.radius
-                    ):
-                        creature.eat(
-                            obj
-                        )
-                        obj.consume()
+                            if obj.type != FOOD.type:
+                                continue
 
-            elif (creature.type==PREDATOR.type):
-                                
-                
-                nearby = self.spatial_grid.query_radius(
-    
-                    creature.x,
-    
-                    creature.y,
-    
-                    creature.radius + 10
-    
-                )
-    
-    
-    
-                for obj in nearby:
-    
-    
-                    if obj.type != PREY.type:
-    
-                        continue
-    
-    
-    
-                    distance = creature.distance_to(
-                        obj
-                    )
-    
-    
-                    if (
-                        distance
-                        <
-                        creature.radius
-                        +
-                        obj.radius
-                    ):
-    
-    
-                        creature.eat(
-                            obj
-                        )
-    
-    
+                        else:
+
+                            if obj.type != PREY.type:
+                                continue
+
+                        dx = obj.x - creature.x
+                        dy = obj.y - creature.y
+
+                        limit = creature.radius + obj.radius
+
+                        if dx * dx + dy * dy > limit * limit:
+                            continue
+
+                        creature.eat(obj)
                         obj.consume()
 
     # ----------------------------------------------------

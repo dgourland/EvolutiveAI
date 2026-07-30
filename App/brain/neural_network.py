@@ -13,7 +13,7 @@ Le réseau possède une mémoire interne :
 
 
 import numpy as np
-
+from App.physics.jit_math import jit_forward
 
 
 class NeuralNetwork:
@@ -201,68 +201,10 @@ class NeuralNetwork:
         actions
         nouvelle mémoire
         """
+        return jit_forward(inputs, memory, self.w1, self.b1, self.w2, self.b2, self.w_action, self.b_action, self.w_memory, self.b_memory)
 
 
-        # -------------------------------------------------
-        # Fusion perception + mémoire
-        # -------------------------------------------------
-
-        neural_input = np.concatenate(
-            (
-                inputs,
-                memory
-            )
-        )
-
-
-        # -------------------------------------------------
-        # Couche cachée 1
-        # -------------------------------------------------
-
-        hidden1 = np.tanh(
-            neural_input @ self.w1
-            +
-            self.b1
-        )
-
-
-        # -------------------------------------------------
-        # Couche cachée 2
-        # -------------------------------------------------
-
-        hidden2 = np.tanh(
-            hidden1 @ self.w2
-            +
-            self.b2
-        )
-
-
-        # -------------------------------------------------
-        # Actions
-        # -------------------------------------------------
-
-        actions = np.tanh(
-            hidden2 @ self.w_action
-            +
-            self.b_action
-        )
-
-
-        # -------------------------------------------------
-        # Nouvelle mémoire
-        # -------------------------------------------------
-
-        new_memory = np.tanh(
-            hidden2 @ self.w_memory
-            +
-            self.b_memory
-        )
-
-
-        return (
-            actions,
-            new_memory
-        )
+        
 
 
 

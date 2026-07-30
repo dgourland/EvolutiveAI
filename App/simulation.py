@@ -77,7 +77,7 @@ class Simulation:
 
         self.raycaster = Raycaster(
             self.world.spatial_grid,
-            step=rays_points
+            self.world
         )
 
         self.world.sensor_system = {

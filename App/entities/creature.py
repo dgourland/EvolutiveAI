@@ -166,6 +166,13 @@ class Creature:
             5,
             dtype=np.float32
         )
+
+    def update_all(self, world):
+        self.update_sensor(world)
+        self.update_brain()
+        self.update_movement()
+        self.update_breeding(world)
+        
     def update_sensor(self, world):
 
         world.sensor_system[self.type].scan(
