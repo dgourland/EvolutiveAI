@@ -232,11 +232,6 @@ class SpatialGrid:
         max_distance
     ):
 
-        self.current_ray += 1
-
-        ray_id = self.current_ray
-
-
         cx = int(x // self.cell_size)
         cy = int(y // self.cell_size)
 
@@ -251,36 +246,32 @@ class SpatialGrid:
 
 
         if dx > 0:
-            step_x = 1
-            next_x = (
-                (cx + 1) *
-                self.cell_size
-            )
 
+            step_x = 1
             t_max_x = (
-                next_x - x
-            ) / dx
+                ((cx + 1) * self.cell_size - x)
+                / dx
+            )
 
             t_delta_x = (
                 self.cell_size / dx
             )
 
         elif dx < 0:
+
             step_x = -1
-            next_x = (
-                cx *
-                self.cell_size
-            )
 
             t_max_x = (
-                next_x - x
-            ) / dx
+                (cx * self.cell_size - x)
+                / dx
+            )
 
             t_delta_x = (
                 -self.cell_size / dx
             )
 
         else:
+
             step_x = 0
             t_max_x = float("inf")
             t_delta_x = float("inf")
@@ -288,36 +279,33 @@ class SpatialGrid:
 
 
         if dy > 0:
+
             step_y = 1
-            next_y = (
-                (cy + 1) *
-                self.cell_size
-            )
 
             t_max_y = (
-                next_y - y
-            ) / dy
+                ((cy + 1) * self.cell_size - y)
+                / dy
+            )
 
             t_delta_y = (
                 self.cell_size / dy
             )
 
         elif dy < 0:
+
             step_y = -1
-            next_y = (
-                cy *
-                self.cell_size
-            )
 
             t_max_y = (
-                next_y - y
-            ) / dy
+                (cy * self.cell_size - y)
+                / dy
+            )
 
             t_delta_y = (
                 -self.cell_size / dy
             )
 
         else:
+
             step_y = 0
             t_max_y = float("inf")
             t_delta_y = float("inf")
@@ -329,23 +317,10 @@ class SpatialGrid:
 
         while distance <= max_distance:
 
-
-            cell_id = (
-                cy *
-                self.grid_width
-                +
-                cx
+            yield (
+                cy * self.grid_width + cx,
+                distance
             )
-
-
-            if self.ray_stamp[cell_id] != ray_id:
-
-                self.ray_stamp[cell_id] = ray_id
-
-                yield (
-                    cell_id,
-                    distance
-                )
 
 
             if t_max_x < t_max_y:
