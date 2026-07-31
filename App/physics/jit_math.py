@@ -2,7 +2,7 @@ from numba import njit
 import numpy as np
 import math
 
-@njit
+@njit(nopython=True)
 def jit_forward(
     inputs,
     memory,
@@ -51,7 +51,7 @@ def jit_forward(
     return actions, new_memory
 
 
-@njit
+@njit(nopython=True)
 def ray_circle_test(
     ox,
     oy,
@@ -119,7 +119,7 @@ def ray_circle_test(
 
     return hit
 
-@njit
+@njit(nopython=True)
 def raycast(
     ox,
     oy,
@@ -175,7 +175,7 @@ def raycast(
 
     return result, closest
 
-@njit
+@njit(nopython=True)
 def ray_cells_jit(
     ox,
     oy,
@@ -242,7 +242,7 @@ def ray_cells_jit(
     return count
 
 
-@njit
+@njit(nopython=True)
 def njit_scan(
         ox,
         oy,

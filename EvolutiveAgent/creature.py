@@ -22,10 +22,10 @@ import random
 import numpy as np
 
 
-from App.genetics.dna import DNA
-from App.brain.neural_network import NeuralNetwork
+from dna import DNA
+from neural_network import NeuralNetwork
 import time
-from App.vars import PREY, PREDATOR
+from vars import PREY, PREDATOR
 
 
 class Creature:
@@ -124,9 +124,14 @@ class Creature:
             self.radius = PREY.radius
             self.max_speed = 5
             self.max_energy = 150
+            self.hidden1_layer=PREY.hidden1_layer
+            self.hidden2_layer=PREY.hidden2_layer
+            self.output_size=PREY.output_size
 
         else:
-
+            self.hidden1_layer=PREDATOR.hidden1_layer
+            self.hidden2_layer=PREDATOR.hidden2_layer
+            self.output_size=PREDATOR.output_size
             self.radius = PREDATOR.radius
             self.max_speed = 3
             self.max_energy = 200
@@ -160,8 +165,12 @@ class Creature:
 
         self.brain = NeuralNetwork(
             dna=dna.genes,
+            hidden1_size=self.hidden1_layer,
+            hidden2_size=self.hidden2_layer,
+            output_size=self.output_size,
             input_size=self.input_size,
-            memory_size=self.memory_size
+            memory_size=self.memory_size,
+            
         )
 
         self.outputs = np.zeros(

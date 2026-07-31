@@ -106,6 +106,7 @@ class Simulation:
                 new_pred = Creature(
                     adn,
                     PREDATOR.type,
+                    PREDATOR.memory_size,
                     PREDATOR.ray_count,
                     self.world.width,
                     self.world.height
@@ -125,6 +126,7 @@ class Simulation:
                 child = Creature(
                     child_dna,
                     PREDATOR.type,
+                    PREDATOR.memory_size,
                     PREDATOR.ray_count,
                     self.world.width,
                     self.world.height
@@ -164,6 +166,7 @@ class Simulation:
                 creature = Creature(
                     dna,
                     PREDATOR.type,
+                    PREDATOR.memory_size,
                     PREDATOR.ray_count,
                     self.world.width,
                     self.world.height
@@ -188,6 +191,7 @@ class Simulation:
                 new_prey = Creature(
                     adn,
                     PREY.type,
+                    PREY.memory_size,
                     PREY.ray_count,
                     self.world.width,
                     self.world.height
@@ -208,6 +212,7 @@ class Simulation:
                 child = Creature(
                     child_dna,
                     PREY.type,
+                    PREY.memory_size,
                     PREY.ray_count,
                     self.world.width,
                     self.world.height
@@ -247,6 +252,7 @@ class Simulation:
                 creature = Creature(
                     dna,
                     PREY.type,
+                    PREY.memory_size,
                     PREY.ray_count,
                     self.world.width,
                     self.world.height
@@ -316,6 +322,14 @@ class Simulation:
     # ----------------------------------------------------
 
     def evolve(self):
+        self.world.dead_creatures[1].sort(
+            key=lambda c: c.fitness,
+            reverse=True
+        )
+        self.world.dead_creatures[2].sort(
+                key=lambda c: c.fitness,
+                reverse=True
+            )
         for type in self.world.dead_creatures.keys():
             for creature in self.world.dead_creatures[type]:
                 self.logger.log_death(
@@ -324,7 +338,7 @@ class Simulation:
                                     self.generation,
                                     cause="energy_depleted"
                                 )
-
+        self.logger.save(self.generation)
         population = self.world.creatures
 
         preys=[]
@@ -354,7 +368,38 @@ class Simulation:
 
             if len(predators)==0:
                 predators=self.world.dead_creatures[PREDATOR.type].copy()
+            preys_input_size = (
+                            PREY.ray_count * 3+PREY.memory_size+PREY.metrics_size
+                        )
+            if len(preys)<((self.population_size/2)*0.1):
+                for _ in range(int((self.population_size/2)*0.1-len(preys))):
+                    dna = DNA.random(NeuralNetwork.dna_size(preys_input_size))
+                    prey = Creature(
+                        dna,
+                        creature_type=PREY.type,
+                        memory_size=PREY.memory_size,
+                        ray_count=PREY.ray_count,
+                        world_width=self.world.width,
+                        world_height=self.world.height
+                    )
+                    preys.append(prey)
 
+            predator_input_size = (
+                    PREDATOR.ray_count * 3+PREDATOR.memory_size+PREDATOR.metrics_size
+                )
+            if len(predators)<((self.population_size/2)*0.1):
+                for _ in range(int((self.population_size/2)*0.1-len(predators))):
+                    dna = DNA.random(NeuralNetwork.dna_size(predator_input_size))
+                    predator = Creature(
+                        dna,
+                        creature_type=PREDATOR.type,
+                        memory_size=PREDATOR.memory_size,
+                        ray_count=PREDATOR.ray_count,
+                        world_height=self.world.height,
+                        world_width=self.world.width
+                    )
+                    predators.append(predator)
+            
         self.world.dead_creatures={1:[],2:[]}
         
 
@@ -425,6 +470,7 @@ class Simulation:
             child = Creature(
                 child_dna,
                 PREY.type,
+                PREY.memory_size,
                 PREY.ray_count,
                 self.world.width,
                 self.world.height
@@ -448,6 +494,7 @@ class Simulation:
             child = Creature(
                 child_dna,
                 PREDATOR.type,
+                PREDATOR.memory_size,
                 PREDATOR.ray_count,
                 self.world.width,
                 self.world.height

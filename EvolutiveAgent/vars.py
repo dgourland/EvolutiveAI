@@ -18,6 +18,9 @@ class PREY:
     radius=8
     memory_size=16
     metrics_size=5
+    hidden1_layer=32
+    hidden2_layer=32
+    output_size=5
     
 class PREDATOR:
     type=2
@@ -27,4 +30,7 @@ class PREDATOR:
     radius=8
     memory_size=16
     metrics_size=5
+    hidden1_layer=32
+    hidden2_layer=32
+    output_size=5
     
