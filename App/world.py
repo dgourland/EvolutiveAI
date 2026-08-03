@@ -50,11 +50,11 @@ class World:
         # ------------------------------------------------
 
         self.creatures = []
-
+        self.valid_objects = 0
         self.deads = []
 
         self.foods = []
-
+        self.spectator=-1
 
         # ------------------------------------------------
         # Object buffers for spatial/raycast system
@@ -69,14 +69,18 @@ class World:
         #   len(creatures) -> end
         #
 
-        MAX_OBJECTS = 10000
-
+        self.MAX_OBJECTS = 10000
+        MAX_OBJECTS=self.MAX_OBJECTS
         self.object_x = np.zeros(
             MAX_OBJECTS,
             dtype=np.float32
         )
 
         self.object_y = np.zeros(
+            MAX_OBJECTS,
+            dtype=np.float32
+        )
+        self.object_angle = np.zeros(
             MAX_OBJECTS,
             dtype=np.float32
         )
@@ -96,9 +100,22 @@ class World:
             dtype=np.int32
         )
 
+        self.object_color = np.zeros(
+            (MAX_OBJECTS,3),
+            dtype=np.float32
+        )
 
         self.object_count = 0
 
+
+        MAX_RAYS=128
+        #-------------------------------------------------
+        # Spectator Data
+        #-------------------------------------------------
+        self.spec_rays_vectors=np.zeros((MAX_RAYS, 7),dtype=np.float32)
+        # ox, end_x, oy, end_y, r, g, b
+
+        self.valid_rays = 0
 
         # ------------------------------------------------
         # Spatial hash grid
@@ -218,23 +235,22 @@ class World:
         # -----------------------------
         # Creatures
         # -----------------------------
-
+        self.valid_objects=len(self.creatures)
         for creature in self.creatures:
-
             object_id = self.object_count
-
             # Store the spatial id inside the creature
             creature.object_id = object_id
             self.object_ref.append(creature)
-
             self.object_x[object_id] = creature.x
             self.object_y[object_id] = creature.y
             self.object_radius[object_id] = creature.radius
             self.object_type[object_id] = creature.type
-
-
-            self.object_last_query[object_id] = -1
-
+            self.object_angle[object_id] = creature.angle
+            c = creature.color
+            self.object_color[object_id,0] = c[0] / 255.0
+            self.object_color[object_id,1] = c[1] / 255.0
+            self.object_color[object_id,2] = c[2] / 255.0
+            
 
             self.spatial_grid.insert(
                 object_id,
@@ -251,11 +267,9 @@ class World:
         # -----------------------------
 
         for food in self.foods:
-
             obj = self.object_count
             self.object_ref.append(food)
             self.object_ref[obj] = food
-
             self.object_x[obj] = food.x
             self.object_y[obj] = food.y
             self.object_radius[obj] = food.radius
@@ -322,6 +336,7 @@ class World:
             breeding = time.perf_counter()
             creature.update_breeding(self)
             breeding_time += (time.perf_counter() - breeding)*1000
+
 
         
         creature_time = (

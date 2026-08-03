@@ -120,16 +120,22 @@ class Creature:
         # ==========================================================
 
         if self.type == PREY.type:
-
+            self.color=PREY.color
             self.radius = PREY.radius
-            self.max_speed = 5
-            self.max_energy = 150
+            self.max_speed = PREY.max_speed
+            self.max_energy = PREY.max_energy
+            self.hidden1_layer=PREY.hidden1_layer
+            self.hidden2_layer=PREY.hidden2_layer
+            self.output_size=PREY.output_size
 
         else:
-
+            self.color=PREDATOR.color
             self.radius = PREDATOR.radius
-            self.max_speed = 3
-            self.max_energy = 200
+            self.max_speed = PREDATOR.max_speed
+            self.max_energy = PREDATOR.max_energy
+            self.hidden1_layer=PREDATOR.hidden1_layer
+            self.hidden2_layer=PREDATOR.hidden2_layer
+            self.output_size=PREDATOR.output_size
 
         self.speed = 0.0
         self.distance_travel = 0.0
@@ -160,8 +166,12 @@ class Creature:
 
         self.brain = NeuralNetwork(
             dna=dna.genes,
+            hidden1_size=self.hidden1_layer,
+            hidden2_size=self.hidden2_layer,
+            output_size=self.output_size,
             input_size=self.input_size,
-            memory_size=self.memory_size
+            memory_size=self.memory_size,
+            
         )
 
         self.outputs = np.zeros(

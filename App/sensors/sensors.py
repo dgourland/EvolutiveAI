@@ -70,7 +70,7 @@ class SensorSystem:
         # ---------------------------------
         # Creature state
         # ---------------------------------
-
+        is_spec= world.creatures[world.spectator]==creature
         ox = creature.x
         oy = creature.y
 
@@ -117,7 +117,8 @@ class SensorSystem:
         # ---------------------------------
         # Run JIT scanner
         # ---------------------------------
-
+        if is_spec:
+            world.valid_rays=self.ray_count
         njit_scan(
             ox,
             oy,
@@ -159,7 +160,10 @@ class SensorSystem:
             inputs,
 
             creature.type,
-            FOOD.type
+            FOOD.type,
+            is_spec,
+            world.spec_rays_vectors
+
         )
 
 

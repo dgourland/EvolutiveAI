@@ -9,6 +9,7 @@ contenant des paramètres afin de maitriser plus facilement les caractéristique
 class FOOD:
     type=0
     radius=4
+    color=(70, 230, 70)
 
 class PREY:
     type=1
@@ -18,6 +19,14 @@ class PREY:
     radius=8
     memory_size=16
     metrics_size=5
+    hidden1_layer=32
+    hidden2_layer=32
+    output_size=5
+    max_speed = 5
+    max_energy = 150
+    color=(255, 170, 70)
+    
+    
     
 class PREDATOR:
     type=2
@@ -27,4 +36,9 @@ class PREDATOR:
     radius=8
     memory_size=16
     metrics_size=5
-    
+    hidden1_layer=32
+    hidden2_layer=32
+    output_size=5
+    max_speed = 3
+    max_energy = 200
+    color=(70, 170, 255)

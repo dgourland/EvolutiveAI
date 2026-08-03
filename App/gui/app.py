@@ -9,6 +9,8 @@ from .camera import Camera
 from .renderer import Renderer
 from .ui import UI
 import time, os
+from OpenGL.GL import *
+
 
 class SimulationApp:
 
@@ -53,10 +55,7 @@ class SimulationApp:
         self.dt=0
         self.fps=0
         self.acceleration=1
-       
-        
-        self.spectator_mode = False
-        self.spectator_index = 0
+
         self.clock = pygame.time.Clock()
 
         
@@ -65,12 +64,13 @@ class SimulationApp:
 
         self.paused = False
         # Performance monitoring
-
+        self.spectator_mode=False
         self.simulation_ms = 0
         self.render_ms = 0
 
         self.update_counter = 0
         self.updates_per_second = 0
+        self.spectator_index=-1
 
         self.last_second = time.perf_counter()
         self.stats = {
@@ -91,16 +91,40 @@ class SimulationApp:
 
     def run(self):
         if self.GUI:
+
             pygame.init()
-            self.screen = pygame.display.set_mode(
-                (self.world.width, self.world.height)
+
+            pygame.display.gl_set_attribute(
+                pygame.GL_CONTEXT_MAJOR_VERSION, 3
             )
-            pygame.display.set_caption("Evolution Simulation")
-            self.camera = Camera()
+            pygame.display.gl_set_attribute(
+                pygame.GL_CONTEXT_MINOR_VERSION, 3
+            )
+            pygame.display.gl_set_attribute(
+                pygame.GL_CONTEXT_PROFILE_MASK,
+                pygame.GL_CONTEXT_PROFILE_CORE
+            )
+            self.screen = pygame.display.set_mode(
+                (self.world.width, self.world.height),
+                pygame.OPENGL | pygame.DOUBLEBUF
+            )
+            pygame.display.set_caption(
+                "Evolution Simulation"
+            )
+            print(glGetString(GL_VERSION).decode())
+            print(glGetString(GL_SHADING_LANGUAGE_VERSION).decode())
+            glViewport(0, 0, self.world.width, self.world.height)
             
+            glEnable(GL_BLEND)
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+            self.camera = Camera(self.world.width, self.world.height)
+            print("GL context before Renderer:",
+                glGetString(GL_VERSION))
+
+            print("GL error:",
+                glGetError())
             self.renderer = Renderer(
-                self.screen,
-                self.camera
+                camera=self.camera
             )
             self.ui = UI()
         while self.running:
@@ -149,26 +173,32 @@ class SimulationApp:
 
             start = time.perf_counter()
 
-            spectator = None
+            
             if self.GUI:
                 if self.spectator_mode and self.world.creatures:
 
                     self.spectator_index %= len(self.world.creatures)
 
-                    spectator = self.world.creatures[self.spectator_index]
+                    creature = self.world.creatures[
+                        self.spectator_index
+                    ]
+
+                    self.world.spectator = creature.object_id
 
                     self.camera.follow(
-                        spectator,
-                        self.world.width,
-                        self.world.height
+                        self.world.spectator,
+                        self.world
                     )
-                    self.camera.zoom=2
+
+                    self.camera.zoom = 2
+
                 else:
-                    self.camera.zoom=1
+
+                    self.world.spectator = -1
+                    self.camera.zoom = 1
 
                 self.renderer.draw(
-                    self.world,
-                    spectator
+                    self.world
                 )
                 self.ui.draw(self.screen,self)
 
@@ -258,6 +288,7 @@ class SimulationApp:
                         self.camera.y = 0
                 elif event.key == pygame.K_z:
                     self.acceleration+=1
+
                 elif event.key == pygame.K_s:
                     if (self.acceleration-1)>=1:
                         self.acceleration-=1

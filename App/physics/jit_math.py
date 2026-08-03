@@ -1,7 +1,7 @@
 from numba import njit
 import numpy as np
 import math
-
+GRID_COLOR=45/255
 @njit(nopython=True)
 def jit_forward(
     inputs,
@@ -275,12 +275,15 @@ def njit_scan(
 
         inputs,
         creature_type,
-        food_type
+        food_type,
+        spectator,
+        spectator_rays
     ):
     
     
     index = 0
-
+    cell_buffer = np.empty(128, dtype=np.int32)
+    distance_buffer = np.empty(128, dtype=np.float32)
     for r in range(relative_vectors.shape[0]):
 
         rel_dx = relative_vectors[r,0]
@@ -301,8 +304,7 @@ def njit_scan(
 
 
         # temporary buffers are needed because numba cannot iterate generators
-        cell_buffer = np.empty(128, dtype=np.int32)
-        distance_buffer = np.empty(128, dtype=np.float32)
+        
 
 
         cell_count = ray_cells_jit(
@@ -390,19 +392,46 @@ def njit_scan(
 
 
             if hit_type == food_type:
-
                 inputs[index] = strength
 
 
             elif hit_type == creature_type:
-
                 inputs[index + 1] = strength
 
+            
 
             else:
-
                 inputs[index + 2] = strength
 
+        if spectator:
+            end_x = ox + dx * closest_distance
+            end_y = oy + dy * closest_distance
+            spectator_rays[r,0] = ox
+            spectator_rays[r,1] = oy
+            spectator_rays[r,2] = end_x
+            spectator_rays[r,3] = end_y
 
+            if closest_object >= 0:
 
-        index += 3
+                if hit_type == food_type:
+                    spectator_rays[r,4] = 0
+                    spectator_rays[r,5] = 0
+                    spectator_rays[r,6] = 1
+
+                elif hit_type == creature_type:
+                    spectator_rays[r,4] = 0
+                    spectator_rays[r,5] = 1
+                    spectator_rays[r,6] = 0
+
+                else:
+                    spectator_rays[r,4] = 1
+                    spectator_rays[r,5] = 0
+                    spectator_rays[r,6] = 0
+
+            else:
+                spectator_rays[r,4] = GRID_COLOR
+                spectator_rays[r,5] = GRID_COLOR
+                spectator_rays[r,6] = GRID_COLOR
+        index+=3
+    
+        

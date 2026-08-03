@@ -1,5 +1,5 @@
 """
-App/gui/ui
+App/gui/ui.py
 
 Permet l'affichage de métriques en temps réel de la simulation.
 """
