@@ -95,7 +95,10 @@ class Creature:
             self.input_size,
             dtype=np.float32
         )
-
+        self.ray_relative_vectors = np.zeros(
+                (ray_count, 2),
+                dtype=np.float32
+            )
         # ==========================================================
         # Position
         # ==========================================================
@@ -127,7 +130,8 @@ class Creature:
             self.hidden1_layer=PREY.hidden1_layer
             self.hidden2_layer=PREY.hidden2_layer
             self.output_size=PREY.output_size
-
+            self.fov=math.radians(PREY.field_of_view)
+            self.max_distance=PREY.max_distance
         else:
             self.color=PREDATOR.color
             self.radius = PREDATOR.radius
@@ -136,7 +140,8 @@ class Creature:
             self.hidden1_layer=PREDATOR.hidden1_layer
             self.hidden2_layer=PREDATOR.hidden2_layer
             self.output_size=PREDATOR.output_size
-
+            self.fov=math.radians(PREDATOR.field_of_view)
+            self.max_distance=PREDATOR.max_distance
         self.speed = 0.0
         self.distance_travel = 0.0
 
@@ -187,7 +192,7 @@ class Creature:
         
     def update_sensor(self, world):
 
-        world.sensor_system[self.type].scan(
+        world.sensor_system.scan(
             
                 self,
                 world

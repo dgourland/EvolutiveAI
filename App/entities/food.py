@@ -61,7 +61,7 @@ class Food:
         # ------------------------------------------------
 
         self.radius = FOOD.radius
-
+        self.fov=0
         self.color = FOOD.color
         # Important pour :
         # SpatialGrid / Raycaster / Sensors

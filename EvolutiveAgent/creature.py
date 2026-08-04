@@ -46,7 +46,7 @@ class Creature:
         self.memory_size=memory_size
         self.type = creature_type
         self.dna = dna
-
+        self.fov=0
         self.world_width = world_width
         self.world_height = world_height
 
@@ -120,13 +120,13 @@ class Creature:
         # ==========================================================
 
         if self.type == PREY.type:
-
             self.radius = PREY.radius
             self.max_speed = 5
             self.max_energy = 150
             self.hidden1_layer=PREY.hidden1_layer
             self.hidden2_layer=PREY.hidden2_layer
             self.output_size=PREY.output_size
+            self.fov=PREY.field_of_view
 
         else:
             self.hidden1_layer=PREDATOR.hidden1_layer
@@ -135,6 +135,7 @@ class Creature:
             self.radius = PREDATOR.radius
             self.max_speed = 3
             self.max_energy = 200
+            self.fov=PREDATOR.field_of_view
 
         self.speed = 0.0
         self.distance_travel = 0.0

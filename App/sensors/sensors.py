@@ -18,65 +18,47 @@ import math, time
 from App.vars import FOOD, PREY, PREDATOR
 from App.physics.jit_math import njit_scan
 import numpy as np
+from App.entities.creature import Creature
 
 
 class SensorSystem:
+    query_id = 0
 
-    def __init__(
-        self,
-        ray_count=9,
-        fov=math.pi * 0.8,
-        max_distance=200,
-        
-    ):
-
-        self.ray_count = ray_count
-        self.max_distance = max_distance
-        self.fov = fov
-
-        self.query_id = 0
-
-
-        self.relative_vectors = np.zeros(
-            (ray_count, 2),
-            dtype=np.float32
-        )
-
-
-        half_fov = fov * 0.5
-
-
-        for i in range(ray_count):
-
-            if ray_count == 1:
-                angle = 0.0
-
-            else:
-                angle = (
-                    -half_fov
-                    +
-                    i * fov / (ray_count - 1)
-                )
-
-
-            self.relative_vectors[i,0] = math.cos(angle)
-            self.relative_vectors[i,1] = math.sin(angle)
-    # -----------------------------------------------------
-    # Scan complet
-    # -----------------------------------------------------
-
-    def scan(self, creature, world):
+    @staticmethod
+    def scan(creature:Creature, world):
 
         # ---------------------------------
         # Creature state
         # ---------------------------------
-        is_spec= world.creatures[world.spectator]==creature
+        if world.spectator>=0:
+            is_spec= world.creatures[(world.spectator)%world.creatures.__len__()]==creature
+        else:
+            is_spec=False
+        if is_spec:
+            world.spec_rays_vectors.fill(0)
+            world.valid_rays = creature.ray_count
         ox = creature.x
         oy = creature.y
-
+        
         cos_angle = math.cos(creature.angle)
         sin_angle = math.sin(creature.angle)
+        relative_vectors = creature.ray_relative_vectors
 
+        for i in range(creature.ray_count):
+        
+            if creature.ray_count == 1:
+                angle = 0.0
+
+            else:
+                angle = (
+                    -(creature.fov / 2)
+                    +
+                    i * creature.fov / (creature.ray_count - 1)
+                )
+
+
+            relative_vectors[i,0] = math.cos(angle)
+            relative_vectors[i,1] = math.sin(angle)
 
         # ---------------------------------
         # Sensor input buffer
@@ -89,9 +71,9 @@ class SensorSystem:
         # World buffers
         # ---------------------------------
 
-        object_x = world.object_x
-        object_y = world.object_y
-        object_radius = world.object_radius
+        object_x = world.object_data[:,0]
+        object_y = world.object_data[:,1]
+        object_radius = world.object_data[:,2]
         object_type = world.object_type
 
         object_ids = world.spatial_grid.object_ids
@@ -111,14 +93,16 @@ class SensorSystem:
         # Query cache
         # ---------------------------------
 
-        query_id = self.query_id
+        query_id = SensorSystem.query_id
 
 
         # ---------------------------------
         # Run JIT scanner
         # ---------------------------------
         if is_spec:
-            world.valid_rays=self.ray_count
+            world.valid_rays=creature.ray_count
+
+            
         njit_scan(
             ox,
             oy,
@@ -126,9 +110,9 @@ class SensorSystem:
             cos_angle,
             sin_angle,
 
-            self.relative_vectors,
+            creature.ray_relative_vectors,
 
-            self.max_distance,
+            creature.max_distance,
 
 
             object_ids,
@@ -171,7 +155,7 @@ class SensorSystem:
         # Increment query counter
         # ---------------------------------
 
-        self.query_id += self.ray_count
+        SensorSystem.query_id += creature.ray_count
 
 
         return inputs

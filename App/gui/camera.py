@@ -16,12 +16,6 @@ class Camera:
 
 
     def __init__(self, width, height):
-
-        # position monde
-        self.x = 0.0
-        self.y = 0.0
-
-
         # zoom
         self.zoom = 1.0
 
@@ -33,6 +27,9 @@ class Camera:
         # taille écran
         self.width = width
         self.height = height
+
+        self.x = self.width*0.5
+        self.y = self.height*0.5
 
 
 
@@ -54,6 +51,7 @@ class Camera:
     ):
 
         if spectator_id < 0:
+            self.reset()
             return
 
 
@@ -61,7 +59,7 @@ class Camera:
             return
 
 
-        target_x = world.object_x[spectator_id]
+        target_x = world.object_data[0,spectator_id]
         target_y = world.object_y[spectator_id]
 
 
@@ -137,6 +135,6 @@ class Camera:
 
     def reset(self):
 
-        self.x = 0
-        self.y = 0
+        self.x = self.width*0.5
+        self.y = self.height*0.5
         self.zoom = 1.0

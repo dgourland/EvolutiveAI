@@ -21,8 +21,7 @@ from App.genetics.dna import DNA
 from App.brain.neural_network import NeuralNetwork
 from App.entities.creature import Creature
 from App.utils.logger import SimulationLogger
-from App.sensors.predator_sensor import PredatorSensorSystem
-from App.sensors.preys_sensor import PreySensorSystem
+from App.sensors.sensors import SensorSystem
 from App.vars import * 
 from App.data import DataClass
 from App.death_record import DeathRecord
@@ -73,11 +72,6 @@ class Simulation:
             world_height,
             self.generation
         )
-
-        self.world.sensor_system = {
-            PREY.type:PreySensorSystem(),
-            PREDATOR.type:PredatorSensorSystem()
-        }
 
     
         self.creatures = []

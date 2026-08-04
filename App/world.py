@@ -16,10 +16,9 @@ from App.death_record import DeathRecord
 from App.physics.spatial_grid import SpatialGrid
 from App.entities.food import Food
 from App.utils.logger import SimulationLogger
-import time, random
 from App.sensors.sensors import SensorSystem
-from App.entities.creature import Creature
-from App.vars import *
+import time, random
+from App.vars import FOOD, PREDATOR, PREY
 import numpy as np
 
 class World:
@@ -71,6 +70,19 @@ class World:
 
         self.MAX_OBJECTS = 10000
         MAX_OBJECTS=self.MAX_OBJECTS
+
+        self.object_data = np.zeros(
+            (MAX_OBJECTS, 7),
+            dtype=np.float32
+        )
+        # 0: x
+        # 1: y
+        # 2: radius
+        # 3: angle
+        # 4 : r
+        # 5 : g
+        # 6 : b
+
         self.object_x = np.zeros(
             MAX_OBJECTS,
             dtype=np.float32
@@ -107,8 +119,9 @@ class World:
 
         self.object_count = 0
 
-
-        MAX_RAYS=128
+        
+        MAX_RAYS=max(PREY.ray_count, PREDATOR.ray_count)
+        self.MAX_RAYS=MAX_RAYS
         #-------------------------------------------------
         # Spectator Data
         #-------------------------------------------------
@@ -128,7 +141,7 @@ class World:
         )
 
 
-        self.sensor_system = None
+        self.sensor_system = SensorSystem
 
         # object_id -> python object
         self.object_ref = []
@@ -235,21 +248,21 @@ class World:
         # -----------------------------
         # Creatures
         # -----------------------------
-        self.valid_objects=len(self.creatures)
+        self.valid_objects=(len(self.creatures)+len(self.foods))
         for creature in self.creatures:
             object_id = self.object_count
             # Store the spatial id inside the creature
             creature.object_id = object_id
             self.object_ref.append(creature)
-            self.object_x[object_id] = creature.x
-            self.object_y[object_id] = creature.y
-            self.object_radius[object_id] = creature.radius
+            self.object_data[object_id, 0] = creature.x
+            self.object_data[object_id, 1] = creature.y
+            self.object_data[object_id, 2] = creature.radius
             self.object_type[object_id] = creature.type
-            self.object_angle[object_id] = creature.angle
+            self.object_data[object_id, 3] = creature.angle
             c = creature.color
-            self.object_color[object_id,0] = c[0] / 255.0
-            self.object_color[object_id,1] = c[1] / 255.0
-            self.object_color[object_id,2] = c[2] / 255.0
+            self.object_data[object_id,4] = c[0] / 255.0
+            self.object_data[object_id,5] = c[1] / 255.0
+            self.object_data[object_id,6] = c[2] / 255.0
             
 
             self.spatial_grid.insert(
@@ -270,11 +283,17 @@ class World:
             obj = self.object_count
             self.object_ref.append(food)
             self.object_ref[obj] = food
-            self.object_x[obj] = food.x
-            self.object_y[obj] = food.y
-            self.object_radius[obj] = food.radius
+            self.object_data[obj, 0] = food.x
+            self.object_data[obj, 1] = food.y
+            self.object_data[obj, 2] = food.radius
             self.object_type[obj] = food.type
             self.object_last_query[obj] = -1
+
+            c = food.color
+
+            self.object_data[obj,4] = c[0] / 255.0
+            self.object_data[obj,5] = c[1] / 255.0
+            self.object_data[obj,6] = c[2] / 255.0
 
             grid.insert(
                 obj,
