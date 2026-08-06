@@ -40,9 +40,7 @@ class Simulation:
         starting_dna=None,
         starting_mutation_rate=0.02,
         starting_mutation_strength=0.15,
-        fov=90,
-        max_distance=200,
-        rays_points=5
+        SAVE_PATH="./saves/default"
         
     ):
 
@@ -73,19 +71,21 @@ class Simulation:
             self.generation
         )
 
-    
+        self.SAVE_PATH=SAVE_PATH
         self.creatures = []
         dna_preys=[]
         dna_predators=[]
-        for files in OS.listdir("./saves/preys/"):
-            with open("./saves/preys/"+files) as f:
-                new_dna = DNA.load(f.read())
-                dna_preys.append(new_dna)
+        if not OS.path.exists(SAVE_PATH):
+            OS.mkdir(SAVE_PATH)
+        if OS.path.exists(f"{SAVE_PATH}/predators.dna"):
+            with open(f"{SAVE_PATH}/predators.dna") as f:
+                for dna in f.read().split("\n"):
+                    dna_preys.append(DNA.load(dna))
 
-        for files in OS.listdir("./saves/predator/"):
-            with open("./saves/predator/"+files) as f:
-                new_dna = DNA.load(f.read())
-                dna_predators.append(new_dna)
+        if OS.path.exists(f"{SAVE_PATH}/predators.dna"):
+            with open(f"{SAVE_PATH}/predators.dna") as f:
+                for dna in f.read().split("\n"):
+                    dna_predators.append(DNA.load(dna))
 
         self.create_initial_prey_population(dna_preys)
         self.create_initial_predator_population(dna_predators)
@@ -332,7 +332,7 @@ class Simulation:
                                     self.generation,
                                     cause="energy_depleted"
                                 )
-        self.logger.save(self.generation)
+        self.logger.save(self.generation, self.SAVE_PATH)
         population = self.world.creatures
 
         preys=[]
@@ -423,18 +423,20 @@ class Simulation:
         print("Nombre de proies : ",survivors_preys.__len__())
         print("Nombre de prédateurs : ", survivors_predator.__len__())
         
-        for files in OS.listdir("./saves/preys/"):
-            OS.remove("./saves/preys/"+files)
+        if (OS.path.exists(f"{self.SAVE_PATH}/preys.dna")):
+            OS.remove(f"{self.SAVE_PATH}/preys.dna")
 
-        for files in OS.listdir("./saves/predator/"):
-            OS.remove("./saves/predator/"+files)
+        if (OS.path.exists(f"{self.SAVE_PATH}/predators.dna")):
+            OS.remove(f"{self.SAVE_PATH}/predators.dna")
 
-        for lives in survivors_preys:
-            with open(f"saves/preys/{DataClass.NAMELIST[random.randint(0, DataClass.NAMELIST.__len__()-1)]}.dna", "w") as f:
+        
+        with open(f"{self.SAVE_PATH}/preys.dna", "a") as f:
+            for lives in survivors_preys:
                 f.write(lives.dna.dump())
 
-        for lives in survivors_predator:
-            with open(f"saves/predator/{DataClass.NAMELIST[random.randint(0, DataClass.NAMELIST.__len__()-1)]}.dna", "w") as f:
+        
+        with open(f"{self.SAVE_PATH}/predators.dna", "a") as f:
+            for lives in survivors_predator:
                 f.write(lives.dna.dump())
 
 

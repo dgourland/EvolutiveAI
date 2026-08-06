@@ -245,35 +245,7 @@ class World:
 
         self.object_count = 0
 
-        # -----------------------------
-        # Creatures
-        # -----------------------------
         self.valid_objects=(len(self.creatures)+len(self.foods))
-        for creature in self.creatures:
-            object_id = self.object_count
-            # Store the spatial id inside the creature
-            creature.object_id = object_id
-            self.object_ref.append(creature)
-            self.object_data[object_id, 0] = creature.x
-            self.object_data[object_id, 1] = creature.y
-            self.object_data[object_id, 2] = creature.radius
-            self.object_type[object_id] = creature.type
-            self.object_data[object_id, 3] = creature.angle
-            c = creature.color
-            self.object_data[object_id,4] = c[0] / 255.0
-            self.object_data[object_id,5] = c[1] / 255.0
-            self.object_data[object_id,6] = c[2] / 255.0
-            
-
-            self.spatial_grid.insert(
-                object_id,
-                creature.x,
-                creature.y,
-                creature.radius
-            )
-
-
-            self.object_count += 1
 
         # -----------------------------
         # Food
@@ -304,6 +276,38 @@ class World:
 
             self.object_count += 1
 
+
+        # -----------------------------
+        # Creatures
+        # -----------------------------
+        
+        for creature in self.creatures:
+            object_id = self.object_count
+            # Store the spatial id inside the creature
+            creature.object_id = object_id
+            self.object_ref.append(creature)
+            self.object_data[object_id, 0] = creature.x
+            self.object_data[object_id, 1] = creature.y
+            self.object_data[object_id, 2] = creature.radius
+            self.object_type[object_id] = creature.type
+            self.object_data[object_id, 3] = creature.angle
+            c = creature.color
+            self.object_data[object_id,4] = c[0] / 255.0
+            self.object_data[object_id,5] = c[1] / 255.0
+            self.object_data[object_id,6] = c[2] / 255.0
+            
+
+            self.spatial_grid.insert(
+                object_id,
+                creature.x,
+                creature.y,
+                creature.radius
+            )
+
+
+            self.object_count += 1
+
+       
         grid.finalize()
 
     def update(self):
@@ -326,7 +330,18 @@ class World:
             time.perf_counter() - start
         ) * 1000
 
+        # -----------------------------
+        # Food
+        # -----------------------------
 
+        start = time.perf_counter()
+
+        self.handle_food()
+        
+
+        food_time = (
+            time.perf_counter() - start
+        ) * 1000
 
         # -----------------------------
         # Creatures
@@ -361,22 +376,6 @@ class World:
         creature_time = (
             time.perf_counter() - start
         ) * 1000
-
-
-
-        # -----------------------------
-        # Food
-        # -----------------------------
-
-        start = time.perf_counter()
-
-        self.handle_food()
-        
-
-        food_time = (
-            time.perf_counter() - start
-        ) * 1000
-
 
 
         # -----------------------------

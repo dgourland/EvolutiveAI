@@ -3,18 +3,26 @@ App/gui/app.py
 
 SimulationApp est la classe principale de l'application
 """
-import pygame
-from App.simulation import Simulation
-from .camera import Camera
 import time, os
-import numpy as np
+os.environ["SDL_VIDEODRIVER"] = "x11"
+os.environ["SDL_VIDEO_X11_FORCE_EGL"] = "0"
 os.environ["PYOPENGL_PLATFORM"] = "glx"
+os.environ["LIBGL_ALWAYS_SOFTWARE"] = "0"
+os.environ["MESA_LOADER_DRIVER_OVERRIDE"] = "d3d12"
+os.environ["GALLIUM_DRIVER"] = "d3d12"
+os.environ["mesa_glthread"]="true"
+os.environ["D3D12_ADAPTER_INDEX"]="1"
+import pygame
 from OpenGL import platform
 from OpenGL.GL import *
+import pygame, math
+from App.simulation import Simulation
+import numpy as np
 import pygame._sdl2.video as sdl2
 print("Var PyOpenGL Platform : ",os.environ.get("PYOPENGL_PLATFORM"))
 print("Pygame SDL Version : ",pygame.get_sdl_version())
 import traceback
+from App.gui.camera import Camera
 class SimulationApp:
 
     def __init__(self, 
@@ -23,16 +31,12 @@ class SimulationApp:
             food_amount=200,
             world_width=1200,
             world_height=800,
-            starting_dna=None,
             starting_mutation_rate=0.02,
             starting_mutation_strength=0.02,
             respawn_food_size=5,
             respawn_food_rate=10,
-            fov=90,
-            max_distance=200,
-            rays=10,
-            rays_points=5,
-            GUI=True
+            GUI=True,
+            SAVE_PATH="./saves/default/"
             ):
 
         self.GUI=GUI
@@ -42,14 +46,9 @@ class SimulationApp:
             food_amount=food_amount,
             world_width=world_width,
             world_height=world_height, 
-            starting_dna=starting_dna,
             starting_mutation_rate=starting_mutation_rate,
             starting_mutation_strength=starting_mutation_strength,
-            max_distance=max_distance,
-            fov=fov,
-            rays=rays,
-            rays_points=rays_points
-            
+            SAVE_PATH=SAVE_PATH
         )
         self.respawn_food_size=respawn_food_size
         self.respawn_food_rate=respawn_food_rate
@@ -59,9 +58,7 @@ class SimulationApp:
         self.fps=0
         self.acceleration=1
 
-        self.clock = pygame.time.Clock()
-
-        
+        self.clock = pygame.time.Clock()       
 
         self.running = True
 
@@ -92,6 +89,20 @@ class SimulationApp:
         for file in os.listdir("./logs"):
             os.remove("./logs/"+file)
 
+        self.config ={
+                "generation_steps":generation_steps,
+                "population_size":population_size,
+                "food_amount":food_amount,
+                "world_width":world_width,
+                "world_height":world_height,
+                "respawn_food_size":respawn_food_size,
+                "respawn_food_rate":respawn_food_rate,
+                "starting_mutation_rate_percent":math.floor(starting_mutation_rate*100),
+                "starting_mutation_strength_percent":math.floor(starting_mutation_strength*100)
+            }
+    def export_config(self):
+        return self.config
+    
     def run(self):
         if self.GUI:
 
@@ -107,11 +118,24 @@ class SimulationApp:
                 pygame.GL_CONTEXT_PROFILE_MASK,
                 pygame.GL_CONTEXT_PROFILE_CORE
             )
+            pygame.display.gl_set_attribute(
+                pygame.GL_SWAP_CONTROL,
+                0
+            )
             self.screen = pygame.display.set_mode(
                 (self.world.width, self.world.height),
                 pygame.OPENGL | pygame.DOUBLEBUF,
                 vsync=0
             )
+            print("GL attr:",
+                pygame.display.gl_get_attribute(
+                    pygame.GL_CONTEXT_PROFILE_MASK
+                ))
+
+            print("current context:",
+                platform.GetCurrentContext())
+            print("pygame driver:",
+                pygame.display.get_driver())
             print("SDL Window :", sdl2.Window.from_display_module())
             print(platform)
             print(type(platform))
@@ -121,7 +145,9 @@ class SimulationApp:
             pygame.display.set_caption(
                 "Evolution Simulation"
             )
-            print(glGetString(GL_VERSION).decode())
+            
+
+            print("GL_VERSION", glGetString(GL_VERSION).decode())
             print(glGetString(GL_SHADING_LANGUAGE_VERSION).decode())
             glViewport(0, 0, self.world.width, self.world.height)
             
@@ -132,8 +158,8 @@ class SimulationApp:
                 glGetString(GL_VERSION))
             print("GL Context before Renderer :,",
                 platform.GetCurrentContext())
-            print("Vendor  :", glGetString(GL_VENDOR).decode())
-            print("Renderer:", glGetString(GL_RENDERER).decode())
+            print("GL_VENDOR  :", glGetString(GL_VENDOR).decode())
+            print("GL_RENDERER:", glGetString(GL_RENDERER).decode())
             print("GL error:",
                 glGetError())
             self.renderer = Renderer(
@@ -429,7 +455,7 @@ class Renderer:
             print("Circles : OK")
 
             glEnableVertexAttribArray(0)
-            print("124")
+            
             glVertexAttribPointer(
                 0,
                 2,
@@ -438,10 +464,8 @@ class Renderer:
                 0,
                 ctypes.c_void_p(0)
             )
-            print("133")
 
             glBindVertexArray(0)
-            print("136") 
 
 
             # -------------------------------------------------
@@ -457,13 +481,12 @@ class Renderer:
             
 
             self.instance_vbo = glGenBuffers(1)
-            print("152")
+
 
             glBindBuffer(
                 GL_ARRAY_BUFFER,
                 self.instance_vbo
             )
-            print("158")
 
             glBufferData(
                 GL_ARRAY_BUFFER,
@@ -471,7 +494,6 @@ class Renderer:
                 None,
                 GL_DYNAMIC_DRAW
             )
-            print(166)
 
             # -------------------------------------------------
             # VAO objets instanciés

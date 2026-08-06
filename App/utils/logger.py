@@ -84,9 +84,11 @@ class SimulationLogger:
     # Sauvegarde fichier
     # -------------------------------------------------
 
-    def save(self, generation):
+    def save(self, generation, save_path):
+        if (not os.path.exists(save_path+"/logs")):
+            os.mkdir(save_path+"/logs")
         with open(
-            "./logs/"+str(generation)+" - "+self.filename,
+            save_path+"/logs/"+str(generation)+" - "+self.filename,
             "w",
             encoding="utf-8"
         ) as file:
